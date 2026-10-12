@@ -1276,7 +1276,7 @@ dependencies = [
 
 [[package]]
 name = "flou"
-version = "1.8.1"
+version = "1.8.2"
 dependencies = [
  "axum",
  "base64 0.22.1",
