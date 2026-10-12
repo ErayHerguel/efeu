@@ -76,8 +76,9 @@ export function normalizePlan(plan: BoardPlan): BoardPlan {
     })),
     groups: plan.groups
       .slice(0, 10)
-      .map((g) => ({ ...g, notes: clean(g.notes, 12) }))
-      .filter((g) => g.notes.length),
+      .map((g) => ({ ...g, label: g.label.trim(), notes: clean(g.notes, 12) }))
+      // Leere Gruppen mit Überschrift bleiben (Vorlagen zum Ausfüllen).
+      .filter((g) => g.notes.length || g.label),
     steps: clean(plan.steps, 12),
     takeaways: clean(plan.takeaways, 6),
   };

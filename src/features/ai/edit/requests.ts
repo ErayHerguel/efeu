@@ -89,6 +89,7 @@ Antworte mit Änderungen (ops):
 - add: neues Post-it; target = Gruppe (g…) oder Post-it (n…), neben das es gehört, oder "" für frei. color passend zur Gruppe oder "".
 - Ein Post-it = ein Gedanke, höchstens etwa 60 Zeichen.
 Soll ganz neuer Inhalt entstehen (z. B. "mach aus der PDF eine Matrix", oder das Board ist leer), setze create.enabled = true und fülle create wie ein neues Board: layout "matrix" (Zeilen = verglichene Dinge, Spalten = Kriterien, rows[].cells passend zu columns), "clusters" (Gruppen) oder "flow" (Schritte); nicht genutzte Felder leer. Sonst create.enabled = false und alle create-Felder leer.
+Ist das Board leer, entsteht immer neuer Inhalt über create. Für Vorlagen (z. B. Research-Plan, Workshop, Persona) gibst du Gruppen bzw. Spalten mit Post-its, die kurze Leitfragen oder Platzhalter enthalten ("Ziel der Studie?", "Zielgruppe: …"), nie leere Post-its.
 Ändere nur, was die Anweisung verlangt. Nimm Fakten nur aus Board und Quellen. summary: ein kurzer Satz. Sprache: wie Anweisung bzw. Board.`;
 
 export function boardEditRequest(opts: {

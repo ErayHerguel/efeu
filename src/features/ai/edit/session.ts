@@ -221,12 +221,23 @@ async function runBoard(
   const snap = bridge.snapshot();
   const model = buildModel(snap.elements);
   const focus = focusFor(model, snap.selected);
-  const request = boardEditRequest({ boardText: describeBoard(model, focus), selectionOnly: !!focus, instruction, attachments, previous });
+  const boardText = describeBoard(model, focus);
+  const request = boardEditRequest({
+    boardText,
+    selectionOnly: !!focus,
+    instruction: boardText.trim() ? instruction : `${instruction}
+(Das Board ist leer: erstelle den Inhalt über create.)`,
+    attachments,
+    previous,
+  });
   const result = await askAi(request, { signal, onText });
   if (!result) return void useAiBar.setState({ status: pending ? 'preview' : 'idle' });
   const plan = parse<BoardEditPlan>(result);
   const ops = validBoardOps(plan.ops, model, focus);
-  const created = plan.create.enabled ? layoutBoard(normalizePlan(plan.create), freeOrigin(bridge.bounds())).elements : [];
+  // Auch ohne gesetztes enabled übernehmen, wenn Claude Inhalt geliefert hat (oder das Board leer ist).
+  const c0 = plan.create;
+  const hasContent = c0.rows.length > 0 || c0.groups.length > 0 || c0.steps.length > 0 || c0.takeaways.length > 0;
+  const created = plan.create.enabled || hasContent ? layoutBoard(normalizePlan(plan.create), freeOrigin(bridge.bounds())).elements : [];
   if (!ops.length && !created.length) throw new Error(plan.summary ? `Keine Änderung: ${plan.summary}` : 'Claude hat nichts geändert. Formulier die Anweisung anders.');
   pending = { kind: 'board', pageId, model, elements: snap.elements, ops, plan: { ...plan, ops }, created };
   const c = plan.create;

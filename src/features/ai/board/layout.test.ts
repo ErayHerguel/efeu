@@ -73,3 +73,12 @@ describe('Clustern', () => {
     expect(headers).toHaveLength(2);
   });
 });
+
+describe('Vorlagen', () => {
+  it('leere Gruppen mit Überschrift bleiben als Rahmen stehen', () => {
+    const plan = normalizePlan({ ...base, layout: 'clusters', columns: [], rows: [], takeaways: [], groups: [{ label: 'Ziele', color: 'blue', notes: [] }] });
+    expect(plan.groups).toHaveLength(1);
+    const els = layoutBoard(plan, { x: 0, y: 0 }).elements;
+    expect(els.some((e) => e.type === 'text' && e.text === 'Ziele')).toBe(true);
+  });
+});
