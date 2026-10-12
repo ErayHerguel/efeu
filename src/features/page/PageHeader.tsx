@@ -49,7 +49,7 @@ export function PageHeader({ page }: { page: PageMeta }) {
         )}
         {!page.cover && (
           <button
-            onClick={() => void chooseCover(page.id)}
+            onClick={() => chooseCover(page.id)}
             className="flex h-7 items-center gap-1.5 rounded-md px-2 text-sm text-faint hover:bg-hover hover:text-muted"
           >
             <ImageIcon size={15} /> Titelbild hinzufügen

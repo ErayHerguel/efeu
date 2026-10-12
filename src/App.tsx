@@ -27,6 +27,8 @@ import { SettingsDialog } from './features/settings/SettingsDialog';
 import { AiConfirm } from './features/ai/AiConfirm';
 import { WritePanel } from './features/ai/WritePanel';
 import { AiBar } from './features/ai/edit/AiBar';
+import { CoverPicker } from './features/page/CoverPicker';
+import { hydrateUnsplash } from './features/page/covers';
 import { AskDialog } from './features/ai/AskDialog';
 import { useAi } from './features/ai/store';
 import { refreshSpend } from './features/ai/usage';
@@ -63,6 +65,7 @@ function bootstrap(): Promise<void> {
     const settings = await loadSettings();
     useUI.getState().hydrate(settings);
     hydrateUpdates(settings);
+    hydrateUnsplash(settings);
     await useAi.getState().hydrate(settings);
     refreshSpend().catch((err) => console.error('KI-Kosten', err));
     await usePages.getState().load();
@@ -170,6 +173,7 @@ export function App() {
       <AiConfirm />
       <WritePanel />
       <AiBar />
+      <CoverPicker />
       <AskDialog />
       <Toasts />
       {/* Hinweise unten rechts, übereinander */}

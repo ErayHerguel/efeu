@@ -21,6 +21,7 @@ import { useUpdate } from '../update/updater';
 import { AiSettings } from '../ai/AiSettings';
 import { useSettingsSection } from '../ai/client';
 import { Button, Heading, Toggle } from './controls';
+import { setUnsplashKey, useUnsplash } from '../page/covers';
 
 type Section = 'general' | 'ai' | 'sharing' | 'devices' | 'data' | 'updates';
 
@@ -73,11 +74,29 @@ function General() {
           <p className="text-sm text-faint">Keine. Festlegen über „…“ oben rechts auf einer Seite → „Als Startseite festlegen“.</p>
         )}
       </section>
+      <UnsplashSetting />
       <section>
         <Heading>Tastenkürzel</Heading>
         <Button onClick={() => useUI.getState().setOverlay('shortcuts')}>Alle Kürzel anzeigen ({formatCombo('Mod+/')})</Button>
       </section>
     </div>
+  );
+}
+
+function UnsplashSetting() {
+  const keySet = useUnsplash((s) => s.keySet);
+  return (
+    <section>
+      <Heading>Titelbilder von Unsplash</Heading>
+      {keySet ? (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="flex-1">Eingerichtet, der Schlüssel liegt im Schlüsselbund.</span>
+          <Button onClick={() => void setUnsplashKey(null).catch((err) => reportError('Unsplash', err))}>Schlüssel entfernen</Button>
+        </div>
+      ) : (
+        <p className="text-sm text-faint">Nicht eingerichtet. Auf einer Seite „Titelbild hinzufügen“ → „Unsplash“ führt dich in zwei Minuten durch.</p>
+      )}
+    </section>
   );
 }
 

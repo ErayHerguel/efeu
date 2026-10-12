@@ -7,6 +7,7 @@ mod notify;
 mod paths;
 mod share;
 mod transfer;
+mod unsplash;
 
 use std::time::{Duration, Instant};
 
@@ -63,6 +64,12 @@ fn migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/008_ai_usage.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 9,
+            description: "cover credits",
+            sql: include_str!("../migrations/009_cover_credits.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -107,6 +114,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(db::Db::new())
         .manage(ai::Ai::new())
+        .manage(unsplash::Unsplash::new())
         .manage(share::Share::new())
         .manage(started)
         .setup(|app| {
@@ -162,6 +170,10 @@ pub fn run() {
             transfer::import_read,
             transfer::reveal_path,
             transfer::save_file,
+            unsplash::unsplash_key_delete,
+            unsplash::unsplash_key_set,
+            unsplash::unsplash_search,
+            unsplash::unsplash_use,
         ])
         .build(tauri::generate_context!())
         .expect("Fehler beim Starten von flou")

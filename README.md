@@ -27,6 +27,8 @@ Kein Konto, kein Cloud-Server, keine Telemetrie. Alle Daten liegen auf deinem Co
 - **Seitenlinks** mit `[[` und Backlinks am Seitenende
 - **Datenbanken** mit Text, Zahl, Auswahl, Mehrfachauswahl, Datum, Checkbox, URL, Relation, Rollup und Formel. Ansichten: Tabelle, Kanban-Board, Kalender, Galerie, Liste; Filter (UND/ODER), Sortierung und Spaltenbreiten pro Ansicht; Werte sind durchsuchbar
 - **Befehlspalette** (`⌘K`) und **Volltextsuche** (SQLite FTS5)
+- **Titelbilder** aus Unsplash (Suche in Millionen freien Fotos, mit eigenem kostenlosem Zugangsschlüssel; das Foto wird lokal gespeichert, der Fotograf am Bild genannt), Farbverläufen oder eigenen Bildern
+- **Icons**: alle Emojis mit deutscher Suche, Kategorien, Hautfarbe und „Zuletzt benutzt“
 - **Startseite** und **Favoriten**, Seitenbaum per Tastatur (`⇧⌘L`, dann Pfeiltasten, Enter, F2)
 - **Teilen**: Drucken bzw. „Als PDF sichern“ (`⌘P`), Seite als Markdown kopieren (`⇧⌘C`)
 - **Markdown-Export und -Import** (einzelne Seiten, ganzer Workspace, Ordner)

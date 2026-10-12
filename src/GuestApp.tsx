@@ -1,3 +1,4 @@
+import { CoverPicker } from './features/page/CoverPicker';
 import { LoaderCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import logo from './assets/logo.svg';
@@ -87,6 +88,7 @@ export function GuestApp() {
       {overlay === 'shortcuts' && <ShortcutsDialog />}
       {overlay === 'comments' && <CommentsDialog />}
       <ConfirmDialog />
+      <CoverPicker />
       <Toasts />
     </div>
   );
