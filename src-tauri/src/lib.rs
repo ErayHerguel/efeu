@@ -72,6 +72,12 @@ fn migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/009_cover_credits.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 10,
+            description: "cloud sync",
+            sql: include_str!("../migrations/010_sync.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
