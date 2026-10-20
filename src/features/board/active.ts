@@ -31,6 +31,16 @@ export interface BoardBridge {
 
 export const useActiveBoard = create<{ bridge: BoardBridge | null }>(() => ({ bridge: null }));
 
+/** Stand je Board: steigt, wenn ein Board im Hintergrund geändert wurde (Vorschauen laden neu). */
+export const useBoardRevision = create<Record<string, number>>(() => ({}));
+
+export function bumpBoard(pageId: string): void {
+  useBoardRevision.setState((s) => ({ [pageId]: (s[pageId] ?? 0) + 1 }));
+}
+
+/** Board, das unsichtbar geöffnet ist, damit die KI darauf zeichnen kann (ohne die Seite zu verlassen). */
+export const useHiddenBoard = create<{ pageId: string | null }>(() => ({ pageId: null }));
+
 /** Wartet, bis das Board mit dieser ID bereit ist (z. B. direkt nach dem Anlegen). */
 export function waitForBoard(pageId: string, timeoutMs = 15_000): Promise<BoardBridge> {
   return new Promise((resolve, reject) => {

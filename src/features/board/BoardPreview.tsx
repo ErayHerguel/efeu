@@ -4,6 +4,7 @@ import { GUEST } from '../../lib/mode';
 import { connection } from '../collab/guest/connection';
 import type { BoardSnapshot } from '../collab/protocol';
 import { loadFiles } from './files';
+import { useBoardRevision } from './active';
 
 /** Gespeicherte Szene, als Gast vom Gastgeber. */
 async function loadScene(pageId: string): Promise<Pick<BoardSnapshot, 'elements' | 'files'>> {
@@ -16,6 +17,7 @@ async function loadScene(pageId: string): Promise<Pick<BoardSnapshot, 'elements'
 export function BoardPreview({ pageId }: { pageId: string }) {
   const [svg, setSvg] = useState<string | null>(null);
   const [empty, setEmpty] = useState(false);
+  const revision = useBoardRevision((s) => s[pageId] ?? 0);
 
   useEffect(() => {
     let alive = true;
@@ -26,6 +28,7 @@ export function BoardPreview({ pageId }: { pageId: string }) {
         if (alive) setEmpty(true);
         return;
       }
+      if (alive) setEmpty(false);
       await import('./assetPath');
       const { exportToSvg } = await import('@excalidraw/excalidraw');
       const files = await loadFiles(scene.files);
@@ -40,7 +43,7 @@ export function BoardPreview({ pageId }: { pageId: string }) {
     return () => {
       alive = false;
     };
-  }, [pageId]);
+  }, [pageId, revision]);
 
   if (empty) return <div className="py-8 text-center text-sm text-faint">Leeres Board – zum Bearbeiten öffnen</div>;
   if (!svg) return <div className="h-40" />;

@@ -17,7 +17,8 @@ import { useAccess } from './collab/sources';
 import { aiUsable } from './ai/store';
 import { useSettingsSection } from './ai/client';
 import { startWrite } from './ai/writeSession';
-import { openAiBar, pageToBoard } from './ai/edit/session';
+import { openAiBar } from './ai/edit/session';
+import { convertToBoard } from './ai/edit/toBoard';
 import { openAsk } from './ai/AskDialog';
 import { openLectureStart } from './lecture/LectureUI';
 import { isRecording, stopLecture } from './lecture/lecture';
@@ -495,12 +496,12 @@ export const actions: AppAction[] = [
   },
   {
     id: 'ai.pageToBoard',
-    label: 'KI: Board aus dieser Seite',
+    label: 'KI: Seite als Board darunter einfügen',
     group: 'KI',
     when: () => aiUsable() && currentPage()?.type === 'page',
     run: () => {
       const page = currentPage();
-      if (page) pageToBoard(page.id).catch((err) => reportError('Board aus Seite', err));
+      if (page) withEditor((editor) => void convertToBoard(editor, 'page'));
     },
   },
   {

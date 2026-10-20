@@ -7,8 +7,7 @@ import { collectLinkTargets, jsonText } from '../../../lib/doc';
 import { usePages } from '../../../store/pages';
 import { toast } from '../../../store/toast';
 import { useUI } from '../../../store/ui';
-import { createBoard } from '../../board/create';
-import { useActiveBoard, waitForBoard, type BoardBridge } from '../../board/active';
+import { useActiveBoard, type BoardBridge } from '../../board/active';
 import { layoutBoard, type Skeleton } from '../board/layout';
 import { normalizePlan } from '../board/plan';
 import { AiCancelled, askAi, costNote, type AiResult } from '../client';
@@ -420,15 +419,4 @@ export async function clusterSelection(): Promise<void> {
     if (err instanceof AiCancelled) return;
     useAiBar.setState({ status: 'error', error: err instanceof Error ? err.message : String(err) });
   }
-}
-
-/** Neues Board unter der aktuellen Seite, mit der Seite als Quelle. */
-export async function pageToBoard(pageId: string): Promise<void> {
-  const attachment = await pageAttachment(pageId);
-  const boardId = await createBoard(pageId);
-  useUI.getState().setExpanded(pageId, true);
-  useUI.getState().open(boardId);
-  await waitForBoard(boardId);
-  openAiBar({ attachments: [attachment], instruction: 'Mach aus der Seite ein übersichtliches Board.' });
-  await runAiBar();
 }

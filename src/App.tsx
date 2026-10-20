@@ -29,6 +29,7 @@ import { WritePanel } from './features/ai/WritePanel';
 import { AiBar } from './features/ai/edit/AiBar';
 import { CoverPicker } from './features/page/CoverPicker';
 import { LectureUI } from './features/lecture/LectureUI';
+import { HiddenBoard } from './features/board/HiddenBoard';
 import { isRecording } from './features/lecture/lecture';
 import { hydrateUnsplash } from './features/page/covers';
 import { AskDialog } from './features/ai/AskDialog';
@@ -178,6 +179,7 @@ export function App() {
       <AiBar />
       <CoverPicker />
       <LectureUI />
+      <HiddenBoard />
       <AskDialog />
       <Toasts />
       {/* Hinweise unten rechts, übereinander */}

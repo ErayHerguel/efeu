@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import { BubbleMenu } from '@tiptap/react/menus';
-import { Bold, Check, Code, ExternalLink, Highlighter, Italic, Link2, MessageSquare, PenLine, Sparkles, Strikethrough, Underline, type LucideIcon } from 'lucide-react';
+import { Bold, Check, Code, ExternalLink, Highlighter, Italic, Link2, MessageSquare, PenLine, Shapes, Sparkles, Strikethrough, Underline, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useReducer, useState } from 'react';
 import { openExternal } from '../lib/assets';
 import { newId } from '../lib/ids';
@@ -10,6 +10,7 @@ import { reportError } from '../store/toast';
 import { useAiReady } from '../features/ai/store';
 import { REWRITE_ACTIONS } from '../features/ai/write';
 import { startWrite } from '../features/ai/writeSession';
+import { convertToBoard } from '../features/ai/edit/toBoard';
 
 interface MarkButton {
   mark: string;
@@ -71,6 +72,10 @@ export function Toolbar({ editor }: { editor: Editor }) {
             onPick={(action, instruction) => {
               setMode('marks');
               startWrite(editor, action, instruction);
+            }}
+            onBoard={() => {
+              setMode('marks');
+              void convertToBoard(editor, 'selection');
             }}
             onCancel={() => {
               setMode('marks');
@@ -224,7 +229,8 @@ export function TableMenu({ editor }: { editor: Editor }) {
 }
 
 /** Aktionen der Schreibhilfe für die Auswahl, plus eigene Anweisung. */
-function AiMenu({ onPick, onCancel }: { onPick: (action: (typeof REWRITE_ACTIONS)[number]['id'] | 'custom' | 'explain', instruction?: string) => void; onCancel: () => void }) {
+function AiMenu({ onPick, onCancel, onBoard }: {
+  onBoard: () => void; onPick: (action: (typeof REWRITE_ACTIONS)[number]['id'] | 'custom' | 'explain', instruction?: string) => void; onCancel: () => void }) {
   const [instruction, setInstruction] = useState('');
   return (
     <div className="flex w-[300px] flex-col gap-1 p-0.5">
@@ -246,6 +252,13 @@ function AiMenu({ onPick, onCancel }: { onPick: (action: (typeof REWRITE_ACTIONS
         className="h-8 rounded-md bg-bg px-2 text-sm outline-none placeholder:text-faint"
       />
       <div className="grid grid-cols-2 gap-0.5">
+        <button
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onBoard}
+          className="col-span-2 flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-sm text-accent hover:bg-hover"
+        >
+          <Shapes size={14} /> Als Board darunter einfügen
+        </button>
         <button
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onPick('explain')}

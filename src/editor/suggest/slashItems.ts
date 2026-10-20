@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { startWrite } from '../../features/ai/writeSession';
 import { openAiBar } from '../../features/ai/edit/session';
+import { convertToBoard } from '../../features/ai/edit/toBoard';
 import { openLectureStart } from '../../features/lecture/LectureUI';
 import { pickAndStoreFile, pickImage } from '../../lib/assets';
 import { columnsContent } from '../nodes/columns';
@@ -320,6 +321,20 @@ export const SLASH_ITEMS: SlashItem[] = [
     run: (editor, range) => {
       editor.chain().focus().deleteRange(range).run();
       openAiBar();
+    },
+  },
+  {
+    id: 'ai.toBoard',
+    title: 'KI: Seite als Board',
+    description: 'Claude macht aus der Seite ein Board, eingebettet hier',
+    group: 'KI',
+    keywords: ['ki', 'ai', 'board', 'whiteboard', 'miro', 'mindmap', 'visualisieren', 'post-its'],
+    icon: Shapes,
+    hostOnly: true,
+    ai: true,
+    run: (editor, range) => {
+      editor.chain().focus().deleteRange(range).run();
+      void convertToBoard(editor, 'page');
     },
   },
   {
