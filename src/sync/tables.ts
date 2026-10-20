@@ -4,7 +4,7 @@ import type { RowChange } from './types';
 /**
  * Tabellen, die mit der Cloud abgeglichen werden. Spalten und Fremdschlüssel liest die App aus der
  * Datenbank selbst, neue Spalten aus späteren Migrationen werden also automatisch mitgenommen.
- * Gerätebezogenes (Einstellungen, Versionsverlauf, KI-Kosten, Freigaben) bleibt lokal.
+ * Gerätebezogenes (Einstellungen, Versionsverlauf, KI-Kosten) bleibt lokal.
  */
 const ROW_TABLES: Record<string, { key?: string[]; exclude?: string[] }> = {
   pages: { key: ['id'], exclude: ['rid'] },
@@ -12,6 +12,9 @@ const ROW_TABLES: Record<string, { key?: string[]; exclude?: string[] }> = {
   db_values: {},
   db_views: {},
   cover_credits: {},
+  // Freigaben (Personen und eigene Geräte mit ihren Rechten): mit eigener Cloud teilt der Server.
+  share_members: {},
+  share_grants: {},
 };
 
 /** Seiteninhalt und Boards werden nicht spaltenweise, sondern inhaltlich zusammengeführt. */

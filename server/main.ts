@@ -1,7 +1,10 @@
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { backupNow } from './backup';
 import { createApp, VERSION } from './app';
-import { Cloud } from './cloud';
 import { Devices } from './devices';
+import { startHost } from './host';
+import { Sharing } from './share';
 import { openStore } from './store';
 
 /**
@@ -11,11 +14,13 @@ import { openStore } from './store';
  *   node efeu-server.mjs add-device "MacBook"  Gerät anlegen, gibt dessen Schlüssel als JSON aus
  *   node efeu-server.mjs pairing-code          Einmaligen Kopplungscode für ein weiteres Gerät ausgeben
  *
- * Einstellungen über Umgebungsvariablen: EFEU_DATA (Datenordner), EFEU_HOST, EFEU_PORT.
+ * Einstellungen über Umgebungsvariablen: EFEU_DATA (Datenordner), EFEU_WEB (Web-Oberfläche), EFEU_HOST, EFEU_PORT.
  */
 const dir = process.env.EFEU_DATA || './efeu-daten';
 const host = process.env.EFEU_HOST || '127.0.0.1';
 const port = Number(process.env.EFEU_PORT || 8080);
+/** Web-Oberfläche für Browser und Handy (liegt neben der Server-Datei im Ordner web). */
+const web = process.env.EFEU_WEB || join(dirname(fileURLToPath(import.meta.url)), 'web');
 
 async function main() {
   const [command, ...args] = process.argv.slice(2);
@@ -41,9 +46,9 @@ async function main() {
     return;
   }
 
-  const cloud = new Cloud(store);
-  await cloud.start();
-  const server = createApp({ store, cloud, devices });
+  const sharing = new Sharing(store, web);
+  const cloud = await startHost(store, sharing);
+  const server = createApp({ store, cloud, devices, sharing });
   server.listen(port, host, () => console.log(`efeu Cloud ${VERSION} läuft auf http://${host}:${port} (Daten: ${dir})`));
 
   const daily = () => {

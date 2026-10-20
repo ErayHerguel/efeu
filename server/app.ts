@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { assetPath, assetStream, listAssets, MIME, storeAsset } from './assets';
 import type { Cloud } from './cloud';
 import type { Device, Devices } from './devices';
+import type { Sharing } from './share';
 import type { Store } from './store';
 
 declare const __EFEU_VERSION__: string;
@@ -77,10 +78,11 @@ export interface Context {
   store: Store;
   cloud: Cloud;
   devices: Devices;
+  sharing?: Sharing;
 }
 
 /** HTTP-Schnittstelle der Cloud. Läuft hinter einem HTTPS-Proxy (Caddy) oder im Heimnetz. */
-export function createApp({ store, cloud, devices }: Context): Server {
+export function createApp({ store, cloud, devices, sharing }: Context): Server {
   const pairLimiter = new Limiter(10, 60_000);
 
   const auth = (req: IncomingMessage): Device => {
@@ -94,6 +96,8 @@ export function createApp({ store, cloud, devices }: Context): Server {
     const path = url.pathname;
     const method = req.method ?? 'GET';
 
+    // Gäste und eigene Geräte im Browser (Einladungslinks).
+    if (sharing && (await sharing.handle(req, res, path, method))) return;
     if (method === 'GET' && path === '/') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(STATUS_PAGE);
@@ -182,7 +186,7 @@ export function createApp({ store, cloud, devices }: Context): Server {
     throw new HttpError(404, 'Nicht gefunden');
   }
 
-  return createServer((req, res) => {
+  const server = createServer((req, res) => {
     route(req, res).catch((err: unknown) => {
       const status = err instanceof HttpError ? err.status : 500;
       if (status === 500) console.error(err);
@@ -190,4 +194,9 @@ export function createApp({ store, cloud, devices }: Context): Server {
       else res.end();
     });
   });
+  server.on('upgrade', (req, socket, head) => {
+    if (sharing && new URL(req.url ?? '/', 'http://localhost').pathname === '/api/ws') sharing.upgrade(req, socket, head);
+    else socket.destroy();
+  });
+  return server;
 }

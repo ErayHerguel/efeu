@@ -95,7 +95,8 @@
       }
     },
     "resources": {
-      "../dist-server/efeu-server.mjs": "efeu-server.mjs"
+      "../dist-server/efeu-server.mjs": "efeu-server.mjs",
+      "../dist-server/efeu-web.tar.gz": "efeu-web.tar.gz"
     }
   },
   "plugins": {

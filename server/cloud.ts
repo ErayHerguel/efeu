@@ -1,5 +1,5 @@
 import type { SqlValue } from '../src/db/driver';
-import { Replica } from '../src/sync/replica';
+import { Replica, type Applied, type ReplicaHooks } from '../src/sync/replica';
 import { loadTables } from '../src/sync/tables';
 import type { BoardElement, Change } from '../src/sync/types';
 import { transaction, type Store } from './store';
@@ -47,8 +47,13 @@ export class Cloud {
   private listeners = new Set<(seq: number) => void>();
   private queue: Promise<unknown> = Promise.resolve();
 
-  constructor(private store: Store) {
-    this.replica = new Replica(store);
+  /** onApplied: nach übernommenen Änderungen eines Geräts (zum Nachführen der Gast-Ansichten). */
+  constructor(
+    private store: Store,
+    hooks: ReplicaHooks = {},
+    private onApplied: (applied: Applied) => void = () => undefined,
+  ) {
+    this.replica = new Replica(store, hooks);
   }
 
   private serial<T>(work: () => Promise<T>): Promise<T> {
@@ -88,8 +93,10 @@ export class Cloud {
   push(origin: string, changes: unknown[]): Promise<number> {
     return this.serial(async () => {
       const valid = changes.filter(validChange);
-      await this.replica.apply(valid);
-      return this.append(origin, valid);
+      const applied = await this.replica.apply(valid);
+      const seq = this.append(origin, valid);
+      this.onApplied(applied);
+      return seq;
     });
   }
 

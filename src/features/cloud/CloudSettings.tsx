@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import { Check, Cloud, CloudOff, Copy, Laptop, Loader2, RefreshCw, Server, Trash2 } from 'lucide-react';
+import { Check, Cloud, CloudOff, Copy, Laptop, Loader2, RefreshCw, Server, Smartphone, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { renderSVG } from 'uqr';
 import { IconButton } from '../../components/IconButton';
@@ -10,6 +10,7 @@ import { confirmDialog } from '../../store/confirm';
 import { reportError, toast } from '../../store/toast';
 import { useUI } from '../../store/ui';
 import { useSettingsSection } from '../ai/client';
+import { cloudLink, useHosting } from '../collab/host/hosting';
 import { Button, Heading } from '../settings/controls';
 import {
   disconnectCloud,
@@ -212,38 +213,86 @@ function JoinForm({ onCancel }: { onCancel: () => void }) {
   );
 }
 
-function PairingPanel({ url, onClose }: { url: string; onClose: () => void }) {
+function PhonePairing({ url }: { url: string }) {
+  const [link, setLink] = useState<string | null>(null);
+  const svg = useMemo(() => (link ? renderSVG(link, { border: 1, ecc: 'M' }) : ''), [link]);
+  useEffect(() => {
+    // Ein Handy ist ein eigenes Gerät mit vollem Zugriff, wie beim Teilen über den Mac.
+    const count = useHosting.getState().members.filter((m) => m.kind === 'device').length;
+    useHosting
+      .getState()
+      .invite(count ? `Handy ${count + 1}` : 'Handy', 'device')
+      .then((member) => setLink(cloudLink(url, member)))
+      .catch((err) => reportError('Gerät konnte nicht angelegt werden', err));
+  }, [url]);
+  if (!link) return <Loader2 size={16} className="animate-spin text-muted" />;
+  return (
+    <div className="flex gap-4">
+      <div className="h-40 w-40 shrink-0 rounded-md bg-white p-1 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+      <ol className="min-w-0 flex-1 list-decimal space-y-2 pl-4 text-sm text-muted">
+        <li>Mit der Kamera des Handys den Code scannen.</li>
+        <li>
+          Im Browser auf <strong className="font-medium text-text">Teilen</strong> → <strong className="font-medium text-text">„Zum Home-Bildschirm“</strong> tippen. efeu liegt dann wie eine App auf dem Handy.
+        </li>
+        <li>Das Handy erscheint unter Einstellungen → Meine Geräte und lässt sich dort wieder entfernen.</li>
+      </ol>
+    </div>
+  );
+}
+
+function ComputerPairing({ url }: { url: string }) {
   const [pairing, setPairing] = useState<{ code: string; expiresAt: number } | null>(null);
   useEffect(() => {
     pairingCode()
       .then(setPairing)
       .catch((err) => reportError('Code konnte nicht erstellt werden', err));
   }, []);
-  const link = pairing ? `${url}/#pair=${pairing.code}` : '';
-  const svg = useMemo(() => (link ? renderSVG(link, { border: 1 }) : ''), [link]);
   if (!pairing) return <Loader2 size={16} className="animate-spin text-muted" />;
   const copy = (text: string) => void writeText(text).then(() => toast('Kopiert'));
   return (
-    <div className="flex gap-4 rounded-lg border border-border p-4">
-      <div className="h-36 w-36 shrink-0 rounded-md bg-white p-1" dangerouslySetInnerHTML={{ __html: svg }} />
-      <div className="min-w-0 flex-1 space-y-2 text-sm">
-        <p className="text-muted">
-          <strong className="font-medium text-text">Handy:</strong> QR-Code mit der Kamera scannen.
-        </p>
-        <p className="text-muted">
-          <strong className="font-medium text-text">Anderer Computer:</strong> efeu installieren, unter Eigene Cloud → „Mit bestehender Cloud verbinden“ eintragen:
-        </p>
-        <div className="flex items-center gap-1">
-          <code className="truncate rounded bg-code px-1.5 py-0.5 text-xs">{url.replace(/^https:\/\//, '')}</code>
-          <IconButton icon={Copy} label="Adresse kopieren" onClick={() => copy(url)} />
-        </div>
-        <div className="flex items-center gap-1">
-          <code className="truncate rounded bg-code px-1.5 py-0.5 text-xs">{pairing.code}</code>
-          <IconButton icon={Copy} label="Code kopieren" onClick={() => copy(pairing.code)} />
-        </div>
-        <p className="text-xs text-faint">Der Code gilt 10 Minuten und nur für ein Gerät.</p>
-        <Button onClick={onClose}>Fertig</Button>
+    <div className="space-y-2 text-sm">
+      <p className="text-muted">Auf dem anderen Computer efeu installieren, dann unter Einstellungen → Eigene Cloud → „Mit bestehender Cloud verbinden“ eintragen:</p>
+      <div className="flex items-center gap-1">
+        <span className="w-16 text-xs text-faint">Adresse</span>
+        <code className="truncate rounded bg-code px-1.5 py-0.5 text-xs">{url.replace(/^https:\/\//, '')}</code>
+        <IconButton icon={Copy} label="Adresse kopieren" onClick={() => copy(url)} />
       </div>
+      <div className="flex items-center gap-1">
+        <span className="w-16 text-xs text-faint">Code</span>
+        <code className="truncate rounded bg-code px-1.5 py-0.5 text-xs">{pairing.code}</code>
+        <IconButton icon={Copy} label="Code kopieren" onClick={() => copy(pairing.code)} />
+      </div>
+      <p className="text-xs text-faint">Der Code gilt 10 Minuten und nur für ein Gerät.</p>
+    </div>
+  );
+}
+
+function PairingPanel({ url, onClose }: { url: string; onClose: () => void }) {
+  const [kind, setKind] = useState<'phone' | 'computer' | null>(null);
+  return (
+    <div className="space-y-3 rounded-lg border border-border p-4">
+      <div className="flex gap-2">
+        {(
+          [
+            ['phone', Smartphone, 'Handy oder Tablet'],
+            ['computer', Laptop, 'Anderer Computer'],
+          ] as const
+        ).map(([id, Icon, label]) => (
+          <button
+            key={id}
+            onClick={() => setKind(id)}
+            className={cx(
+              'flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border text-sm',
+              kind === id ? 'border-accent bg-accent-soft text-text' : 'border-border text-muted hover:bg-hover',
+            )}
+          >
+            <Icon size={15} /> {label}
+          </button>
+        ))}
+      </div>
+      {kind === 'phone' && <PhonePairing url={url} />}
+      {kind === 'computer' && <ComputerPairing url={url} />}
+      <Button onClick={onClose}>Fertig</Button>
     </div>
   );
 }
@@ -312,6 +361,7 @@ function Connected() {
 
       <section>
         <Heading>Geräte</Heading>
+        <p className="mb-2 text-xs text-faint">Unten stehen die Computer mit efeu. Handys und Tablets findest du unter „Meine Geräte“.</p>
         {pairing && url ? (
           <PairingPanel url={url} onClose={() => setPairing(false)} />
         ) : (

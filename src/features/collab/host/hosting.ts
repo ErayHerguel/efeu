@@ -77,6 +77,9 @@ export function deviceLink(topic: string, member: Member): string {
   return `${LAUNCHER_URL}#d=${topic}.${member.token}`;
 }
 
+/** Mit eigener Cloud: fester Link direkt auf den Server (ohne Startseite und ntfy). */
+export const cloudLink = (url: string, member: Member): string => `${url}/#join=${member.token}`;
+
 const persistSetting = (key: string, value: string) => schedule(`setting:${key}`, () => [setSetting(key, value)]);
 const hasDevice = () => useHosting.getState().members.some((m) => m.kind === 'device');
 
@@ -107,11 +110,8 @@ export const useHosting = create<HostingState>((set, get) => ({
 
   async start() {
     if (get().live) return;
-    // Mit eigener Cloud laufen Editor und Boards über den Abgleich; beides gleichzeitig ginge durcheinander.
-    if (useCloud.getState().phase !== 'off') {
-      toast('Mit eigener Cloud wird über die Cloud geteilt, nicht über diesen Computer.');
-      return;
-    }
+    // Mit eigener Cloud teilt der Server; über diesen Computer zu teilen ginge mit dem Abgleich durcheinander.
+    if (useCloud.getState().phase !== 'off') return;
     try {
       await flush();
       await startHub();
@@ -126,6 +126,10 @@ export const useHosting = create<HostingState>((set, get) => ({
   },
 
   async stop() {
+    if (useCloud.getState().phase !== 'off') {
+      toast('Mit eigener Cloud bleibt Teilen an. Wer keinen Zugang mehr haben soll, entfernst du aus der Liste.');
+      return;
+    }
     await invoke('share_stop').catch(() => undefined);
     await stopHub();
     set({ live: false, status: OFF });

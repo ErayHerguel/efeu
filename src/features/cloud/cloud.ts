@@ -11,6 +11,7 @@ import { Replica } from '../../sync/replica';
 import type { Change } from '../../sync/types';
 import { BoardHub } from '../collab/host/boards';
 import { DocHub } from '../collab/host/docs';
+import { useHosting } from '../collab/host/hosting';
 import { useCollab } from '../collab/sources';
 
 export type CloudPhase = 'off' | 'connecting' | 'synced' | 'syncing' | 'offline' | 'error';
@@ -94,6 +95,8 @@ async function runSync() {
 /** Ansicht nach übernommenen Änderungen neu laden (offene Seiten und Boards laufen live mit). */
 async function refresh(rows: boolean) {
   if (!rows) return;
+  // Erst Ausstehendes schreiben, sonst überschriebe der neu geladene Stand eine laufende Änderung.
+  await flush();
   await usePages.getState().load();
   const loaded = Object.keys(useDatabases.getState().data);
   await Promise.all(loaded.map((id) => useDatabases.getState().load(id).catch(() => undefined)));
@@ -151,6 +154,8 @@ export async function startCloud(): Promise<void> {
     cleanup: [...unlisten, onWrite(() => scheduleSync()), () => clearInterval(periodic)],
   };
   installSources(docs, boards);
+  // Teilen läuft jetzt über den Server: Einladungslinks zeigen auf ihn, und er ist immer erreichbar.
+  useHosting.setState({ live: true, status: { phase: 'online', url: status.url, localUrl: null, error: null } });
   await invoke('cloud_events');
   await runSync();
 }
@@ -204,6 +209,7 @@ export async function disconnectCloud(): Promise<void> {
     { sql: 'DELETE FROM sync_clock' },
   ]);
   useCloud.setState({ phase: 'off', url: null, deviceId: null, error: null, lastSync: null });
+  useHosting.setState({ live: false, status: { phase: 'off', url: null, localUrl: null, error: null } });
 }
 
 export const syncNow = () => scheduleSync(0);

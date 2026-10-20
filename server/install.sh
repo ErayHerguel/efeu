@@ -1,7 +1,8 @@
 #!/bin/bash
 # Richtet efeu Cloud auf einem frischen Debian- oder Ubuntu-Server ein. efeu führt das Skript per SSH
 # als root aus und liest die Zeilen "##SCHRITT n Text" als Fortschritt, am Ende "##SCHLUESSEL {json}".
-# Aufruf: install.sh <adresse> <gerätename>   (Server-Datei liegt vorher unter /tmp/efeu-server.mjs)
+# Aufruf: install.sh <adresse> <gerätename>
+# Vorher abgelegt: /tmp/efeu-server.mjs (Server) und /tmp/efeu-web.tar.gz (Web-Oberfläche für Browser und Handy)
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
@@ -15,7 +16,7 @@ fail() { echo "##FEHLER $1"; exit 1; }
 [ -r /etc/os-release ] && . /etc/os-release
 case "${ID:-}" in debian|ubuntu) ;; *) fail "Nur Debian und Ubuntu werden unterstützt (gefunden: ${PRETTY_NAME:-unbekannt}).";; esac
 case "$(uname -m)" in x86_64) ARCH=x64;; aarch64) ARCH=arm64;; *) fail "Prozessor $(uname -m) wird nicht unterstützt.";; esac
-[ -s /tmp/efeu-server.mjs ] || fail "Server-Datei fehlt."
+[ -s /tmp/efeu-server.mjs ] && [ -s /tmp/efeu-web.tar.gz ] || fail "Server-Dateien fehlen."
 
 step 1 "System wird aktualisiert"
 apt-get update -qq
@@ -42,7 +43,10 @@ step 3 "efeu Cloud wird installiert"
 id efeu >/dev/null 2>&1 || useradd --system --home /var/lib/efeu --shell /usr/sbin/nologin efeu
 mkdir -p /var/lib/efeu /opt/efeu
 install -m 0644 /tmp/efeu-server.mjs /opt/efeu/efeu-server.mjs
-rm -f /tmp/efeu-server.mjs
+rm -rf /opt/efeu/web.neu && mkdir -p /opt/efeu/web.neu
+tar -xzf /tmp/efeu-web.tar.gz -C /opt/efeu/web.neu
+rm -rf /opt/efeu/web && mv /opt/efeu/web.neu /opt/efeu/web
+rm -f /tmp/efeu-server.mjs /tmp/efeu-web.tar.gz
 chown -R efeu:efeu /var/lib/efeu /opt/efeu
 chmod 0750 /var/lib/efeu
 cat > /etc/systemd/system/efeu.service <<'EOF'

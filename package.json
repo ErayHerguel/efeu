@@ -19,7 +19,7 @@
     "icons": "node scripts/make-icon.mjs && tauri icon src-tauri/icons/source.png -o src-tauri/icons && rm -rf src-tauri/icons/android src-tauri/icons/ios src-tauri/icons/Square*.png src-tauri/icons/StoreLogo.png src-tauri/icons/64x64.png",
     "version:set": "node scripts/set-version.mjs",
     "build:win": "tauri build --bundles nsis",
-    "build:server": "vite build -c vite.server.config.ts"
+    "build:server": "vite build -c vite.server.config.ts && node scripts/pack-web.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",
@@ -65,12 +65,14 @@
     "@types/node": "26.6.4",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",
+    "@types/ws": "8.18.1",
     "@vitejs/plugin-react": "6.1.2",
     "jsdom": "30.1.2",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "vite": "8.3.3",
-    "vitest": "5.0.3"
+    "vitest": "5.0.3",
+    "ws": "8.21.3"
   },
   "allowScripts": {
     "fsevents": false

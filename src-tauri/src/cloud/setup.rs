@@ -136,6 +136,13 @@ pub async fn cloud_setup(
     let server_bytes = tokio::fs::read(&server_file)
         .await
         .map_err(|_| "Die Server-Datei fehlt in dieser efeu-Version.".to_string())?;
+    let web_file = app
+        .path()
+        .resolve("efeu-web.tar.gz", tauri::path::BaseDirectory::Resource)
+        .map_err(|e| e.to_string())?;
+    let web_bytes = tokio::fs::read(&web_file)
+        .await
+        .map_err(|_| "Die Web-Oberfläche fehlt in dieser efeu-Version.".to_string())?;
 
     progress(&app, 0, "Verbindung zum Server wird aufgebaut");
     let config = Arc::new(client::Config { inactivity_timeout: Some(Duration::from_secs(600)), ..Default::default() });
@@ -162,6 +169,10 @@ pub async fn cloud_setup(
     let (_, code) = run(&session, "umask 077 && cat > /tmp/efeu-server.mjs", &server_bytes, |_| {}).await?;
     if code != 0 {
         return Err("Die Server-Datei ließ sich nicht übertragen.".into());
+    }
+    let (_, code) = run(&session, "umask 077 && cat > /tmp/efeu-web.tar.gz", &web_bytes, |_| {}).await?;
+    if code != 0 {
+        return Err("Die Web-Oberfläche ließ sich nicht übertragen.".into());
     }
 
     // Erst als Datei ablegen: Würde bash das Skript von der Standardeingabe lesen, könnten Befehle

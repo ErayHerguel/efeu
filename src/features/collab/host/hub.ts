@@ -38,6 +38,7 @@ import {
 } from '../protocol';
 import { usePresence } from '../presence';
 import { useCollab, type BoardElement } from '../sources';
+import type * as Y from 'yjs';
 import { BoardHub } from './boards';
 import { DocHub } from './docs';
 import { HOST_COLOR, useHosting } from './hosting';
@@ -58,16 +59,53 @@ interface Connection {
   queue: Promise<void>;
 }
 
+/**
+ * Wo der Hub läuft: in der App (Verbindungen kommen über Rust und den Tunnel) oder auf dem
+ * Cloud-Server (eigene WebSocket-Verbindungen, ohne Gastgeber-Fenster).
+ */
+export interface HubTransport {
+  send(targets: number[], data: string): void;
+  /** Meldet neue, getrennte Verbindungen und eingehende Nachrichten; liefert das Abmelden. */
+  listen(handlers: {
+    open(conn: number, memberId: string): void;
+    close(conn: number): void;
+    message(conn: number, memberId: string, data: string): void;
+  }): Promise<() => void>;
+  /** Der Gastgeber erscheint selbst in der Präsenz (in der App ja, auf dem Server nicht). */
+  host: boolean;
+  /** Wie die Seiten-Dokumente geladen werden (Cloud: aus dem abgeglichenen Yjs-Zustand). */
+  loadDoc?: (pageId: string) => Promise<Y.Doc>;
+}
+
+const tauriTransport: HubTransport = {
+  send: (targets, data) =>
+    void invoke('share_send', { targets, data }).catch((err) => console.error('Senden an Gäste fehlgeschlagen', err)),
+  async listen(handlers) {
+    const offs: UnlistenFn[] = await Promise.all([
+      listen<ConnPayload>('share:open', (e) => handlers.open(e.payload.conn, e.payload.memberId)),
+      listen<ConnPayload>('share:close', (e) => handlers.close(e.payload.conn)),
+      listen<ConnPayload & { data: string }>('share:message', (e) => handlers.message(e.payload.conn, e.payload.memberId, e.payload.data)),
+    ]);
+    return () => offs.forEach((off) => off());
+  },
+  host: true,
+};
+
 const conns = new Map<number, Connection>();
 const accessCache = new Map<string, Map<string, Access>>();
 let docs: DocHub | null = null;
 let boards: BoardHub | null = null;
 let cleanup: (() => void)[] = [];
+let transport: HubTransport = tauriTransport;
 
 function send(targets: number[], message: ServerMessage) {
   if (!targets.length) return;
-  invoke('share_send', { targets, data: JSON.stringify(message) }).catch((err) => console.error('Senden an Gäste fehlgeschlagen', err));
+  transport.send(targets, JSON.stringify(message));
 }
+
+/** Für den Cloud-Abgleich: offene Dokumente und Boards des Hubs. */
+export const hubDocs = () => docs;
+export const hubBoards = () => boards;
 
 const memberOf = (memberId: string) => useHosting.getState().members.find((m) => m.id === memberId);
 
@@ -165,7 +203,7 @@ function people(): Person[] {
       const member = memberOf(c.memberId);
       return { id: `c${c.conn}`, memberId: c.memberId, name: member?.name ?? 'Gast', color: member?.color ?? '#888888', pageId: c.view };
     });
-  return [host, ...guests];
+  return transport.host ? [host, ...guests] : guests;
 }
 
 function syncPresence() {
@@ -472,7 +510,7 @@ interface ConnPayload {
   memberId: string;
 }
 
-function onOpen({ conn, memberId }: ConnPayload) {
+function onOpen(conn: number, memberId: string) {
   conns.set(conn, {
     conn,
     memberId,
@@ -485,14 +523,14 @@ function onOpen({ conn, memberId }: ConnPayload) {
   });
 }
 
-function onClose({ conn }: ConnPayload) {
+function onClose(conn: number) {
   if (!conns.delete(conn)) return;
   docs?.dropConnection(conn);
   boards?.dropConnection(conn);
   syncPresence();
 }
 
-function onMessage({ conn, memberId, data }: ConnPayload & { data: string }) {
+function onMessage(conn: number, memberId: string, data: string) {
   const c = conns.get(conn);
   if (!c || c.memberId !== memberId) return;
   const message = parseClientMessage(data);
@@ -525,16 +563,13 @@ function installSources() {
   });
 }
 
-export async function startHub() {
-  docs = new DocHub(send);
+export async function startHub(using: HubTransport = tauriTransport) {
+  transport = using;
+  docs = new DocHub(send, using.loadDoc);
   boards = new BoardHub(send);
-  const unlisten: UnlistenFn[] = await Promise.all([
-    listen<ConnPayload>('share:open', (e) => onOpen(e.payload)),
-    listen<ConnPayload>('share:close', (e) => onClose(e.payload)),
-    listen<ConnPayload & { data: string }>('share:message', (e) => onMessage(e.payload)),
-  ]);
+  const unlisten = await using.listen({ open: onOpen, close: onClose, message: onMessage });
   cleanup = [
-    ...unlisten,
+    unlisten,
     usePages.subscribe((s, prev) => {
       if (s.pages === prev.pages) return;
       accessCache.clear();
@@ -550,7 +585,7 @@ export async function startHub() {
       if (s.hostName !== prev.hostName || s.members !== prev.members) scheduleSync();
     }),
   ];
-  installSources();
+  if (using.host) installSources();
 }
 
 export async function stopHub() {

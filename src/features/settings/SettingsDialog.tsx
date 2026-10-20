@@ -13,7 +13,8 @@ import { usePages } from '../../store/pages';
 import { reportError, toast } from '../../store/toast';
 import { useUI, type Theme } from '../../store/ui';
 import { actionById } from '../actions';
-import { deviceLink, useHosting } from '../collab/host/hosting';
+import { cloudLink, deviceLink, useHosting } from '../collab/host/hosting';
+import { useCloud } from '../cloud/cloud';
 import { StatusCard } from '../collab/host/ShareDialog';
 import { usePresence } from '../collab/presence';
 import { formatCombo } from '../shortcuts/keys';
@@ -139,7 +140,8 @@ function Sharing() {
 /** QR-Code und Anleitung, um ein eigenes Gerät zu verbinden. */
 function DeviceQr({ member, onClose }: { member: Member; onClose: () => void }) {
   const topic = useHosting((s) => s.topic);
-  const link = topic ? deviceLink(topic, member) : null;
+  const cloud = useCloud((s) => s.url);
+  const link = cloud ? cloudLink(cloud, member) : topic ? deviceLink(topic, member) : null;
   // Wird lokal aus dem eigenen Link erzeugt (kein fremder Inhalt).
   const svg = useMemo(() => (link ? renderSVG(link, { border: 2, ecc: 'M' }) : null), [link]);
   if (!link || !svg) return null;
