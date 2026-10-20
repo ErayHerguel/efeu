@@ -1,6 +1,7 @@
 mod ai;
 mod assets;
 mod backup;
+mod cloud;
 mod db;
 mod desk;
 mod lecture;
@@ -127,6 +128,7 @@ pub fn run() {
         .manage(unsplash::Unsplash::new())
         .manage(lecture::Lecture::new())
         .manage(share::Share::new())
+        .manage(cloud::Cloud::new())
         .manage(started)
         .setup(|app| {
             paths::ensure_dirs(app.handle())?;
@@ -151,6 +153,17 @@ pub fn run() {
             ai::ai_cancel,
             ai::ai_count,
             ai::ai_key_delete,
+            cloud::cloud_status,
+            cloud::cloud_request,
+            cloud::cloud_assets_local,
+            cloud::cloud_asset_upload,
+            cloud::cloud_asset_download,
+            cloud::cloud_pair,
+            cloud::cloud_forget,
+            cloud::cloud_events,
+            cloud::setup::cloud_setup,
+            cloud::setup::cloud_setup_cancel,
+            cloud::device_name,
             ai::ai_key_set,
             ai::ai_mock,
             ai::ai_read_pdf,

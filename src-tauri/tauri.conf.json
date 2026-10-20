@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build && npm run build:server",
     "frontendDist": "../dist"
   },
   "app": {
@@ -93,6 +93,9 @@
         "installerIcon": "icons/icon.ico",
         "startMenuFolder": "efeu"
       }
+    },
+    "resources": {
+      "../dist-server/efeu-server.mjs": "efeu-server.mjs"
     }
   },
   "plugins": {

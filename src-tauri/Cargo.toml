@@ -37,6 +37,7 @@ base64 = "0.22"
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
 cpal = "0.18"
 tar = "0.4"
+russh = { version = "0.64", default-features = false, features = ["ring", "flate2"] }
 
 [profile.release]
 opt-level = 3
