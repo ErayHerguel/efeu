@@ -1,6 +1,6 @@
 /**
  * Was Claude für ein Board liefert: nur der Inhalt, als garantiert gültiges JSON (Structured Outputs).
- * Das Layout rechnet flou selbst (layout.ts), damit das Board immer sauber aussieht.
+ * Das Layout rechnet efeu selbst (layout.ts), damit das Board immer sauber aussieht.
  */
 
 export const NOTE_COLORS = ['yellow', 'pink', 'green', 'blue', 'orange', 'purple', 'gray'] as const;

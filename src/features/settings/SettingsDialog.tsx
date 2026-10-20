@@ -119,8 +119,8 @@ function Sharing() {
         <Toggle
           checked={autostart}
           onChange={(on) => useHosting.getState().setAutostart(on)}
-          label="Beim Start von flou automatisch teilen"
-          hint="So sind Gäste und deine Geräte verbunden, sobald flou läuft."
+          label="Beim Start von efeu automatisch teilen"
+          hint="So sind Gäste und deine Geräte verbunden, sobald efeu läuft."
         />
         <Toggle
           checked={keepAwake}
@@ -148,9 +148,9 @@ function DeviceQr({ member, onClose }: { member: Member; onClose: () => void }) 
         <ol className="min-w-0 flex-1 list-decimal space-y-2 pl-4 text-sm">
           <li>Auf dem iPhone die Kamera öffnen und den Code scannen.</li>
           <li>
-            In Safari unten auf <strong>Teilen</strong> tippen, dann <strong>„Zum Home-Bildschirm“</strong>. flou liegt jetzt als App auf deinem iPhone.
+            In Safari unten auf <strong>Teilen</strong> tippen, dann <strong>„Zum Home-Bildschirm“</strong>. efeu liegt jetzt als App auf deinem iPhone.
           </li>
-          <li className="text-muted">Funktioniert, solange flou auf diesem Computer geöffnet ist und das Teilen läuft.</li>
+          <li className="text-muted">Funktioniert, solange efeu auf diesem Computer geöffnet ist und das Teilen läuft.</li>
         </ol>
       </div>
       <div className="mt-3 flex items-center gap-2">
@@ -203,7 +203,7 @@ function Devices() {
     <div className="space-y-5">
       <p className="text-sm text-muted">
         Dein iPhone (oder ein anderes Gerät) bekommt deinen kompletten Workspace: alle Seiten, Boards und Datenbanken, live abgeglichen
-        mit diesem Computer. Das Gerät nutzt flou im Browser; es braucht keine App aus dem App Store.
+        mit diesem Computer. Das Gerät nutzt efeu im Browser; es braucht keine App aus dem App Store.
       </p>
       {shown ? (
         <DeviceQr member={shown} onClose={() => setShowing(null)} />
@@ -240,7 +240,7 @@ function Devices() {
         </section>
       )}
       <p className="text-xs text-faint">
-        Damit das Symbol auf dem Home-Bildschirm deinen Computer immer findet (die Tunnel-Adresse ändert sich bei jedem Start), meldet flou
+        Damit das Symbol auf dem Home-Bildschirm deinen Computer immer findet (die Tunnel-Adresse ändert sich bei jedem Start), meldet efeu
         die aktuelle Adresse unter einem geheimen Namen beim kostenlosen Dienst ntfy.sh. Gemeldet wird nur die Adresse, nie dein
         Zugangsschlüssel; ohne ihn kommt niemand an deine Daten.
       </p>
@@ -297,7 +297,7 @@ function Updates() {
     <div className="space-y-6">
       <section>
         <Heading>Version</Heading>
-        <p className="text-sm">flou {version}</p>
+        <p className="text-sm">efeu {version}</p>
       </section>
       <section className="divide-y divide-border">
         <Toggle

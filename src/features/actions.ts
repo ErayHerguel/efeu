@@ -450,7 +450,7 @@ export const actions: AppAction[] = [
   },
   {
     id: 'ai.ask',
-    label: 'KI: Frag flou …',
+    label: 'KI: Frag efeu …',
     group: 'KI',
     keys: 'Mod+Shift+J',
     when: aiUsable,

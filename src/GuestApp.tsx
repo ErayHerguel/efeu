@@ -34,11 +34,11 @@ const MESSAGES: Record<GuestProblem | 'revoked', { title: string; text: string }
   },
   unreachable: {
     title: 'Workspace nicht erreichbar',
-    text: 'Vermutlich hat die Person flou geschlossen oder das Teilen beendet. Versuche es später erneut.',
+    text: 'Vermutlich hat die Person efeu geschlossen oder das Teilen beendet. Versuche es später erneut.',
   },
 };
 
-/** Oberfläche für eingeladene Personen: dieselben Ansichten wie in flou, Daten vom Gastgeber. */
+/** Oberfläche für eingeladene Personen: dieselben Ansichten wie in efeu, Daten vom Gastgeber. */
 export function GuestApp() {
   const [boot, setBoot] = useState<Boot>({ status: 'loading' });
   const status = useConnection((s) => s.status);
@@ -56,7 +56,7 @@ export function GuestApp() {
   }, []);
 
   useEffect(() => {
-    document.title = host ? `flou – Workspace von ${host.name}` : 'flou';
+    document.title = host ? `efeu – Workspace von ${host.name}` : 'efeu';
   }, [host]);
 
   const problem = boot.status === 'problem' ? boot.problem : status === 'revoked' ? 'revoked' : null;

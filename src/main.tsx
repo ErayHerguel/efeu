@@ -7,6 +7,9 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { GuestApp } from './GuestApp';
 import { QuickNote } from './features/quick/QuickNote';
 import { GUEST } from './lib/mode';
+import { migrateLegacyStorage } from './lib/legacyStorage';
+
+migrateLegacyStorage();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

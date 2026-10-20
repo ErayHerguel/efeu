@@ -48,10 +48,10 @@ export function StatusCard() {
       <div className="rounded-md border border-border p-4">
         <p className="text-sm text-muted">
           Lade Personen zu einzelnen Seiten, Boards oder Datenbanken ein. Sie arbeiten live mit, im Browser oder in ihrer eigenen
-          flou-App. Deine Daten bleiben auf diesem Computer: flou ist der Server.
+          efeu-App. Deine Daten bleiben auf diesem Computer: efeu ist der Server.
         </p>
         <p className="mt-2 text-xs text-faint">
-          Erreichbar über das Internet per kostenlosem Cloudflare-Tunnel, ohne Konto. Beim ersten Start lädt flou dafür einmalig das
+          Erreichbar über das Internet per kostenlosem Cloudflare-Tunnel, ohne Konto. Beim ersten Start lädt efeu dafür einmalig das
           Programm cloudflared (Apache-2.0, ca. 20 MB) von GitHub.
         </p>
         <button
@@ -106,7 +106,7 @@ export function StatusCard() {
         </div>
       )}
       <p className="mt-2 text-xs text-faint">
-        Die Adresse ändert sich bei jedem Start. Solange flou geöffnet ist und das Teilen läuft, können Eingeladene mitarbeiten.
+        Die Adresse ändert sich bei jedem Start. Solange efeu geöffnet ist und das Teilen läuft, können Eingeladene mitarbeiten.
       </p>
     </div>
   );

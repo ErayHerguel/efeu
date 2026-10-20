@@ -4,7 +4,7 @@ import { valueText } from '../../database/query';
 
 /**
  * Datenbanken mit KI: Claude sieht die Spalten und Einträge als Tabelle und liefert neue Einträge
- * und geänderte Werte als Text. flou wandelt die Texte passend zum Spaltentyp um (Zahl, Datum,
+ * und geänderte Werte als Text. efeu wandelt die Texte passend zum Spaltentyp um (Zahl, Datum,
  * Auswahl, …) und legt fehlende Auswahloptionen an.
  */
 

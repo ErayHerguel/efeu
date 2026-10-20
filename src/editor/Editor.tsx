@@ -64,7 +64,7 @@ function LoadedEditor({ pageId, initial }: { pageId: string; initial: JSONConten
     content: initial,
     immediatelyRender: true,
     shouldRerenderOnTransaction: false,
-    editorProps: { attributes: { class: 'flou-editor', spellcheck: 'true' } },
+    editorProps: { attributes: { class: 'efeu-editor', spellcheck: 'true' } },
     onUpdate: ({ editor: e }) => scheduleSave(pageId, e.state.doc),
   });
   return <EditorChrome pageId={pageId} editor={editor} />;
@@ -105,7 +105,7 @@ function BoundEditor({ pageId, binding }: { pageId: string; binding: DocBinding 
     editable,
     immediatelyRender: true,
     shouldRerenderOnTransaction: false,
-    editorProps: { attributes: { class: 'flou-editor', spellcheck: 'true' } },
+    editorProps: { attributes: { class: 'efeu-editor', spellcheck: 'true' } },
   });
   useEffect(() => {
     if (editor.isEditable !== editable) editor.setEditable(editable);

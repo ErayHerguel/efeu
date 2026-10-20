@@ -47,7 +47,7 @@ async function exportPages(rootIds: string[], targetDir: string): Promise<void> 
     boards[id] = {
       type: 'excalidraw',
       version: 2,
-      source: 'flou',
+      source: 'efeu',
       elements: scene.elements.filter((e) => !e.isDeleted),
       appState: { viewBackgroundColor: scene.appState?.viewBackgroundColor ?? '#ffffff' },
       files: Object.fromEntries(files.map((f) => [f.id, { id: f.id, mimeType: f.mimeType, dataURL: f.dataURL, created: f.created }])),

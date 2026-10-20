@@ -1,5 +1,5 @@
 //! Arbeiten außerhalb des Hauptfensters: Schnellnotiz per globalem Tastenkürzel und Symbol in der
-//! Menüleiste (macOS) bzw. im Infobereich (Windows). Damit kann flou auch ohne offenes Fenster
+//! Menüleiste (macOS) bzw. im Infobereich (Windows). Damit kann efeu auch ohne offenes Fenster
 //! weiterlaufen, etwa solange geteilt wird.
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
@@ -14,7 +14,7 @@ fn quick_shortcut() -> Shortcut {
     Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyN)
 }
 
-/// Zeigt das Hauptfenster (z. B. nach dem Schließen, während flou im Hintergrund weiterläuft).
+/// Zeigt das Hauptfenster (z. B. nach dem Schließen, während efeu im Hintergrund weiterläuft).
 pub fn show_main(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
@@ -46,8 +46,8 @@ pub fn open_quick(app: &AppHandle) {
 
 fn tray_menu(app: &AppHandle, recording: bool) -> tauri::Result<Menu<tauri::Wry>> {
     let quick = MenuItem::with_id(app, "quick", "Schnellnotiz", true, Some("Ctrl+Alt+N"))?;
-    let open = MenuItem::with_id(app, "open", "flou öffnen", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "flou beenden", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", "efeu öffnen", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "efeu beenden", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
     if recording {
         let stop = MenuItem::with_id(app, "lecture-stop", "Mitschrift beenden", true, None::<&str>)?;
@@ -60,9 +60,9 @@ fn tray_menu(app: &AppHandle, recording: bool) -> tauri::Result<Menu<tauri::Wry>
 /// Mitschrift läuft: Hinweis in der Menüleiste (macOS: „● Mitschrift“ neben dem Symbol) und Eintrag zum Beenden.
 #[tauri::command]
 pub fn tray_recording(app: AppHandle, recording: bool) -> Result<(), String> {
-    let Some(tray) = app.tray_by_id("flou") else { return Ok(()) };
+    let Some(tray) = app.tray_by_id("efeu") else { return Ok(()) };
     tray.set_menu(Some(tray_menu(&app, recording).map_err(|e| e.to_string())?)).map_err(|e| e.to_string())?;
-    let _ = tray.set_tooltip(Some(if recording { "flou – Mitschrift läuft" } else { "flou" }));
+    let _ = tray.set_tooltip(Some(if recording { "efeu – Mitschrift läuft" } else { "efeu" }));
     #[cfg(target_os = "macos")]
     let _ = tray.set_title(if recording { Some("● Mitschrift") } else { None });
     Ok(())
@@ -96,10 +96,10 @@ pub fn setup(app: &mut App) -> tauri::Result<()> {
     let icon = tauri::include_image!("icons/tray.png");
     #[cfg(not(target_os = "macos"))]
     let icon = app.default_window_icon().cloned().unwrap_or_else(|| tauri::include_image!("icons/tray.png"));
-    TrayIconBuilder::with_id("flou")
+    TrayIconBuilder::with_id("efeu")
         .icon(icon)
         .icon_as_template(cfg!(target_os = "macos"))
-        .tooltip("flou")
+        .tooltip("efeu")
         .menu(&menu)
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id().as_ref() {

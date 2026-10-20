@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
-pub const DB_FILE: &str = "flou.db";
-pub const DB_URL: &str = "sqlite:flou.db";
+pub const DB_FILE: &str = "efeu.db";
+pub const DB_URL: &str = "sqlite:efeu.db";
 
 /// Basisordner aller Daten: ~/Library/Application Support/<identifier>/
 /// tauri-plugin-sql legt die Datenbank in app_config_dir an; auf macOS ist das derselbe Ordner wie app_data_dir.

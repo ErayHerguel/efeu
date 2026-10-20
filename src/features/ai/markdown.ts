@@ -41,7 +41,7 @@ export function fromAiMarkdown(markdown: string): JSONContent[] {
 
 const LEADING_EMOJI = /^(\p{Extended_Pictographic}\uFE0F?)\s+/u;
 
-/** „> 💡 Text“ wird wieder zum Callout (so schreibt flou Callouts auch als Markdown). */
+/** „> 💡 Text“ wird wieder zum Callout (so schreibt efeu Callouts auch als Markdown). */
 function toCallout(node: JSONContent): JSONContent {
   if (node.type !== 'blockquote' || !node.content?.every((c) => c.type === 'paragraph')) return node;
   const [first, ...rest] = node.content;

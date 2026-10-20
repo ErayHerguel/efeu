@@ -1,4 +1,4 @@
-//! Zusammenarbeit: flou wird selbst zum Server für eingeladene Personen.
+//! Zusammenarbeit: efeu wird selbst zum Server für eingeladene Personen.
 //!
 //! Ein lokaler HTTP-/WebSocket-Server (nur 127.0.0.1) liefert die Web-Oberfläche aus und reicht
 //! Nachrichten der Gäste an das Hauptfenster weiter. Dort entscheidet die App anhand der Freigaben,
@@ -304,19 +304,19 @@ pub fn share_close_member(share: State<'_, Share>, member_id: String) {
     }
 }
 
-/// Öffnet einen geteilten Workspace eines anderen flou in einem eigenen Fenster.
+/// Öffnet einen geteilten Workspace eines anderen efeu in einem eigenen Fenster.
 /// Die Seite läuft dort wie im Browser, ohne Zugriff auf die App-Schnittstellen.
 #[tauri::command]
 pub fn open_shared(app: AppHandle, url: String) -> Result<(), String> {
     let parsed = tauri::Url::parse(url.trim()).map_err(|_| "Das ist kein gültiger Link".to_string())?;
     if !is_shared_origin(&parsed) {
-        return Err("Das ist kein flou-Einladungslink".into());
+        return Err("Das ist kein efeu-Einladungslink".into());
     }
     let label = format!("shared-{}", &random_hex()[..12]);
     let opener = parsed.origin();
     let downloads = app.path().download_dir().ok();
     tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::External(parsed))
-        .title("flou – geteilter Workspace")
+        .title("efeu – geteilter Workspace")
         .inner_size(1200.0, 800.0)
         .min_inner_size(640.0, 480.0)
         // Fremde Links öffnen im Browser, das Fenster bleibt beim geteilten Workspace.

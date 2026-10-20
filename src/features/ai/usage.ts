@@ -16,7 +16,7 @@ export const FEATURE_LABELS: Record<Feature, string> = {
   continue: 'Weiterschreiben',
   board: 'Board erstellen/bearbeiten',
   cluster: 'Post-its clustern',
-  ask: 'Frag flou',
+  ask: 'Frag efeu',
   research: 'Recherche',
 };
 

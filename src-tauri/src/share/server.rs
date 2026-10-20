@@ -22,7 +22,7 @@ use crate::assets;
 use crate::db::Db;
 use crate::paths::assets_dir;
 
-const COOKIE: &str = "flou_session";
+const COOKIE: &str = "efeu_session";
 /// Cloudflare nimmt im kostenlosen Tarif höchstens 100 MB pro Anfrage an.
 const MAX_UPLOAD: usize = 100 * 1024 * 1024;
 const MAX_MESSAGE: usize = 16 * 1024 * 1024;
@@ -86,7 +86,7 @@ async fn db_pool(hub: &Hub) -> Result<sqlx::SqlitePool, Response> {
 
 /// Erreichbarkeit für die Startseite eigener Geräte (läuft auf einer anderen Adresse, daher CORS).
 async fn ping() -> Response {
-    let mut response = (StatusCode::OK, "flou").into_response();
+    let mut response = (StatusCode::OK, "efeu").into_response();
     response.headers_mut().insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
     response.headers_mut().insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     response
@@ -327,7 +327,7 @@ async fn app_asset(State(hub): Shared, headers: HeaderMap, uri: Uri) -> Response
     let body = if is_html {
         // Markiert die Seite als Gast-Oberfläche (siehe src/lib/mode.ts).
         String::from_utf8_lossy(&asset.bytes)
-            .replacen("<head>", "<head><meta name=\"flou-mode\" content=\"guest\">", 1)
+            .replacen("<head>", "<head><meta name=\"efeu-mode\" content=\"guest\">", 1)
             .into_bytes()
     } else {
         asset.bytes
@@ -356,7 +356,7 @@ mod tests {
     #[test]
     fn checks_asset_names() {
         assert!(valid_asset_name("0123456789abcdef0123456789abcdef.png"));
-        assert!(!valid_asset_name("../flou.db"));
+        assert!(!valid_asset_name("../efeu.db"));
         assert!(!valid_asset_name("0123456789abcdef0123456789abcdef.png/../x"));
         assert!(!valid_asset_name("short.png"));
     }

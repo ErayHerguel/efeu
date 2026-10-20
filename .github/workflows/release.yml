@@ -1,5 +1,5 @@
-# Baut flou bei jedem Versions-Tag (z. B. v1.1.0) für macOS und Windows und veröffentlicht ein GitHub-Release:
-# flou.dmg (Mac), flou-setup.exe (Windows), install.sh (Mac-Installation per Terminal).
+# Baut efeu bei jedem Versions-Tag (z. B. v1.1.0) für macOS und Windows und veröffentlicht ein GitHub-Release:
+# efeu.dmg (Mac), efeu-setup.exe (Windows), install.sh (Mac-Installation per Terminal).
 name: Release
 
 on:
@@ -34,16 +34,16 @@ jobs:
       - name: Dateien sammeln
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          DMG="src-tauri/target.noindex/universal-apple-darwin/release/bundle/dmg/flou_${VERSION}_universal.dmg"
+          DMG="src-tauri/target.noindex/universal-apple-darwin/release/bundle/dmg/efeu_${VERSION}_universal.dmg"
           test -f "$DMG" || { echo "DMG fehlt – stimmt die Version (npm run version:set) mit dem Tag überein?"; exit 1; }
           mkdir -p out
-          cp "$DMG" out/flou.dmg
-          cp "$DMG" "out/flou_${VERSION}_universal.dmg"
+          cp "$DMG" out/efeu.dmg
+          cp "$DMG" "out/efeu_${VERSION}_universal.dmg"
           sed "s|__REPO__|${GITHUB_REPOSITORY}|g" website/install.sh > out/install.sh
           # Update-Paket für die App (signiert)
           BUNDLE=src-tauri/target.noindex/universal-apple-darwin/release/bundle/macos
-          cp "$BUNDLE/flou.app.tar.gz" out/flou_universal.app.tar.gz
-          cp "$BUNDLE/flou.app.tar.gz.sig" out/flou_universal.app.tar.gz.sig
+          cp "$BUNDLE/efeu.app.tar.gz" out/efeu_universal.app.tar.gz
+          cp "$BUNDLE/efeu.app.tar.gz.sig" out/efeu_universal.app.tar.gz.sig
       - uses: actions/upload-artifact@v4
         with:
           name: macos
@@ -70,12 +70,12 @@ jobs:
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          SETUP="src-tauri/target.noindex/release/bundle/nsis/flou_${VERSION}_x64-setup.exe"
+          SETUP="src-tauri/target.noindex/release/bundle/nsis/efeu_${VERSION}_x64-setup.exe"
           test -f "$SETUP" || { echo "Installer fehlt – stimmt die Version mit dem Tag überein?"; ls src-tauri/target.noindex/release/bundle/nsis; exit 1; }
           mkdir -p out
-          cp "$SETUP" out/flou-setup.exe
-          cp "$SETUP" "out/flou_${VERSION}_x64-setup.exe"
-          cp "$SETUP.sig" "out/flou_${VERSION}_x64-setup.exe.sig"
+          cp "$SETUP" out/efeu-setup.exe
+          cp "$SETUP" "out/efeu_${VERSION}_x64-setup.exe"
+          cp "$SETUP.sig" "out/efeu_${VERSION}_x64-setup.exe.sig"
       - uses: actions/upload-artifact@v4
         with:
           name: windows
@@ -99,13 +99,13 @@ jobs:
           sig = lambda name: open(f"out/{name}.sig").read().strip()
           manifest = {
               "version": version,
-              "notes": f"flou {version}",
+              "notes": f"efeu {version}. efeu hieß früher flou: Deine Daten werden beim ersten Start übernommen.",
               "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
               "platforms": {
                   # Eine Universal-App für beide Mac-Architekturen
-                  "darwin-aarch64": {"signature": sig("flou_universal.app.tar.gz"), "url": f"{base}/flou_universal.app.tar.gz"},
-                  "darwin-x86_64": {"signature": sig("flou_universal.app.tar.gz"), "url": f"{base}/flou_universal.app.tar.gz"},
-                  "windows-x86_64": {"signature": sig(f"flou_{version}_x64-setup.exe"), "url": f"{base}/flou_{version}_x64-setup.exe"},
+                  "darwin-aarch64": {"signature": sig("efeu_universal.app.tar.gz"), "url": f"{base}/efeu_universal.app.tar.gz"},
+                  "darwin-x86_64": {"signature": sig("efeu_universal.app.tar.gz"), "url": f"{base}/efeu_universal.app.tar.gz"},
+                  "windows-x86_64": {"signature": sig(f"efeu_{version}_x64-setup.exe"), "url": f"{base}/efeu_{version}_x64-setup.exe"},
               },
           }
           json.dump(manifest, open("out/latest.json", "w"), indent=2)
@@ -118,7 +118,9 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           gh release create "$GITHUB_REF_NAME" out/* --repo "$GITHUB_REPOSITORY" \
-            --title "flou $VERSION" \
-            --notes "**Mac** (Apple Silicon und Intel, macOS 13+): flou.dmg laden oder im Terminal \`curl -fsSL https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/install.sh | bash\`
+            --title "efeu $VERSION" \
+            --notes "flou heißt jetzt efeu. Wer flou nutzt, bekommt efeu als normales Update; Daten, Schlüssel und Einstellungen werden beim ersten Start übernommen.
 
-          **Windows** (10/11, 64 Bit): flou-setup.exe laden und ausführen. Erscheint „Der Computer wurde durch Windows geschützt“: „Weitere Informationen“ → „Trotzdem ausführen“."
+          **Mac** (Apple Silicon und Intel, macOS 13+): efeu.dmg laden oder im Terminal \`curl -fsSL https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/install.sh | bash\`
+
+          **Windows** (10/11, 64 Bit): efeu-setup.exe laden und ausführen. Erscheint „Der Computer wurde durch Windows geschützt“: „Weitere Informationen“ → „Trotzdem ausführen“."

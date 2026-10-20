@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "flou",
-  "version": "1.9.1",
-  "identifier": "app.flou.desktop",
+  "productName": "efeu",
+  "version": "2.0.0",
+  "identifier": "app.efeu.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "flou",
+        "title": "efeu",
         "backgroundThrottling": "disabled",
         "width": 1240,
         "height": 820,
@@ -84,13 +84,14 @@
     },
     "windows": {
       "nsis": {
+        "installerHooks": "./windows/hooks.nsh",
         "installMode": "currentUser",
         "languages": [
           "German"
         ],
         "displayLanguageSelector": false,
         "installerIcon": "icons/icon.ico",
-        "startMenuFolder": "flou"
+        "startMenuFolder": "efeu"
       }
     }
   },
@@ -98,7 +99,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM5QUE3REExOEIzMTRCRUIKUldUclN6R0xvWDJxeWRGSWdIdzZQMWY0TUlEeE9lZ0pIbHIxQWUvNnlHamZ5bVVTcDVrK1BmVy8K",
       "endpoints": [
-        "https://github.com/ErayHerguel/flou/releases/latest/download/latest.json"
+        "https://github.com/ErayHerguel/efeu/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"

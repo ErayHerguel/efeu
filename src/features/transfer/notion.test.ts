@@ -27,7 +27,7 @@ describe('CSV aus Notion', () => {
     expect(inferColumn('Erledigt', ['Yes', 'No', '']).type).toBe('checkbox');
     expect(inferColumn('Preis', ['12', '3.5', '1,200']).type).toBe('number');
     expect(inferColumn('Fällig', ['October 8, 2026', '']).type).toBe('date');
-    expect(inferColumn('Link', ['https://flou.app']).type).toBe('url');
+    expect(inferColumn('Link', ['https://efeu.app']).type).toBe('url');
     expect(inferColumn('Status', ['Offen', 'Erledigt', 'Offen'])).toEqual({ name: 'Status', type: 'select', options: ['Offen', 'Erledigt'] });
     expect(inferColumn('Tags', ['Arbeit, Privat', 'Arbeit'])).toEqual({ name: 'Tags', type: 'multi_select', options: ['Arbeit', 'Privat'] });
     const notes = ['Ganz eigener Text eins', 'Noch ein ganz anderer', 'Und ein dritter', 'Vierter', 'Fünfter', 'Sechster', 'Siebter'];

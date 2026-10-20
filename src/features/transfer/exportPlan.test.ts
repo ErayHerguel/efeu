@@ -90,7 +90,7 @@ describe('Board-Export', () => {
     const scene = {
       type: 'excalidraw' as const,
       version: 2 as const,
-      source: 'flou',
+      source: 'efeu',
       elements: [{ id: 'e1', type: 'text', text: 'Hallo' }],
       appState: { viewBackgroundColor: '#ffffff' },
       files: {},

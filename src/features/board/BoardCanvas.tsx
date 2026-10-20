@@ -261,7 +261,7 @@ function Canvas({ pageId, source }: { pageId: string; source: BoardSource }) {
   if (!initial) return null;
 
   return (
-    <div className="flou-board h-full w-full">
+    <div className="efeu-board h-full w-full">
       <Excalidraw
         excalidrawAPI={setApi}
         initialData={initial}

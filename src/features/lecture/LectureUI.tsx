@@ -25,8 +25,8 @@ export function openLectureStart(pageId: string): void {
   useStartDialog.setState({ pageId });
 }
 
-const PREFS_KEY = 'flou.lecture.prefs';
-const HINT_KEY = 'flou.lecture.hintSeen';
+const PREFS_KEY = 'efeu.lecture.prefs';
+const HINT_KEY = 'efeu.lecture.hintSeen';
 
 function loadPrefs(): Omit<LectureOptions, 'slides'> {
   const fallback: Omit<LectureOptions, 'slides'> = { language: 'de', keepTranscript: true, liveNotes: true, device: null, sensitivity: 'normal', topic: '' };
@@ -199,7 +199,7 @@ function StartDialog({ pageId }: { pageId: string }) {
         <h2 className="text-base font-semibold">Vorlesung mitschreiben</h2>
       </div>
       <p className="mt-1 text-sm text-muted">
-        flou hört über das Mikrofon mit, erkennt die Sprache direkt auf diesem Computer und schreibt Notizen in „{page?.title || 'diese Seite'}“. Der
+        efeu hört über das Mikrofon mit, erkennt die Sprache direkt auf diesem Computer und schreibt Notizen in „{page?.title || 'diese Seite'}“. Der
         Ton wird nicht gespeichert. Du kannst den Computer währenddessen ganz normal weiter benutzen.
       </p>
 
@@ -310,7 +310,7 @@ function StartDialog({ pageId }: { pageId: string }) {
 
       {!hintSeen && (
         <p className="mt-4 rounded-md bg-hover px-3 py-2 text-xs text-muted">
-          Hinweis: Vorlesungen darf man in Deutschland nicht ohne Weiteres mitschneiden. Frag am besten vorher die Lehrperson. flou speichert
+          Hinweis: Vorlesungen darf man in Deutschland nicht ohne Weiteres mitschneiden. Frag am besten vorher die Lehrperson. efeu speichert
           keinen Ton, nur den erkannten Text.
         </p>
       )}

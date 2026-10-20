@@ -10,7 +10,7 @@ pub(crate) struct KeepAwake {
 impl KeepAwake {
     pub(crate) fn start() -> Self {
         use std::process::{Command, Stdio};
-        // caffeinate beendet sich mit -w auch dann, wenn flou abstürzt.
+        // caffeinate beendet sich mit -w auch dann, wenn efeu abstürzt.
         let child = Command::new("/usr/bin/caffeinate")
             .args(["-i", "-w", &std::process::id().to_string()])
             .stdin(Stdio::null())

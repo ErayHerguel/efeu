@@ -79,8 +79,8 @@ export function withSkin(e: Emoji, tone: number): string {
   return tone > 0 && e.skins?.[tone - 1] ? e.skins[tone - 1] : e.unicode;
 }
 
-const RECENT_KEY = 'flou.emoji.recent';
-const TONE_KEY = 'flou.emoji.tone';
+const RECENT_KEY = 'efeu.emoji.recent';
+const TONE_KEY = 'efeu.emoji.tone';
 
 export function recentEmojis(): string[] {
   try {

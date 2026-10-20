@@ -22,7 +22,7 @@ async function confirmStopLecture(): Promise<boolean> {
   if (!isRecording()) return true;
   const ok = await confirmDialog({
     title: 'Mitschrift läuft noch',
-    message: 'flou beendet die Mitschrift, schreibt die letzten Notizen und die Zusammenfassung und schließt dann.',
+    message: 'efeu beendet die Mitschrift, schreibt die letzten Notizen und die Zusammenfassung und schließt dann.',
     confirmLabel: 'Beenden und schließen',
   });
   if (ok) await stopLecture();

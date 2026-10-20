@@ -47,7 +47,7 @@ interface UIState {
 }
 
 /** Als Gast bleiben Ansichtseinstellungen im Browser (localStorage), sonst in der Datenbank. */
-const GUEST_PREFIX = 'flou.';
+const GUEST_PREFIX = 'efeu.';
 const persist = (key: string, value: string) => {
   if (!GUEST) {
     schedule(`setting:${key}`, () => [setSetting(key, value)]);

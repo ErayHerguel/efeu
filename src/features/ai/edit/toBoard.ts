@@ -14,7 +14,7 @@ import type { BoardEditPlan } from './boardModel';
 import { boardEditRequest } from './requests';
 
 /**
- * Text → Board: Claude macht aus der Auswahl (oder der ganzen Seite) ein Board im Miro-Stil. flou legt
+ * Text → Board: Claude macht aus der Auswahl (oder der ganzen Seite) ein Board im Miro-Stil. efeu legt
  * es als Unterseite an und bettet es direkt darunter bzw. am Seitenende ein; man bleibt auf der Seite.
  */
 

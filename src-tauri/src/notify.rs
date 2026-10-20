@@ -1,6 +1,6 @@
 //! Mitteilungen des Systems für Erinnerungen. Unter Windows als Toast über das Tauri-Plugin.
 //! macOS lässt Mitteilungen nur für Apps mit kostenpflichtiger Apple-Signatur zu; dort erinnert
-//! flou im Fenster und mit einer Zahl am Dock-Symbol (siehe src/features/reminders.ts).
+//! efeu im Fenster und mit einer Zahl am Dock-Symbol (siehe src/features/reminders.ts).
 
 #[tauri::command]
 pub fn notify(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {

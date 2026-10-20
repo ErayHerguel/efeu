@@ -4,6 +4,7 @@ mod backup;
 mod db;
 mod desk;
 mod lecture;
+mod migrate;
 mod notify;
 mod paths;
 mod share;
@@ -82,7 +83,7 @@ struct StartTime(Instant);
 fn app_ready(window: WebviewWindow, start: State<'_, StartTime>) {
     let _ = window.show();
     let _ = window.set_focus();
-    println!("flou bereit nach {} ms", start.0.elapsed().as_millis());
+    println!("efeu bereit nach {} ms", start.0.elapsed().as_millis());
 }
 
 /// Öffnet den macOS-Druckdialog für die aktuelle Ansicht (dort auch „Als PDF sichern“).
@@ -104,6 +105,8 @@ pub fn run() {
         builder = builder.plugin(plugin);
     }
     builder
+        // Zuerst: Daten aus flou übernehmen, bevor Fenster und Datenbank geöffnet werden.
+        .plugin(migrate::plugin())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations(paths::DB_URL, migrations())
@@ -166,6 +169,8 @@ pub fn run() {
             lecture::lecture_start,
             lecture::lecture_status,
             lecture::lecture_stop,
+            migrate::legacy_bundle_hint,
+            migrate::migrated_from_flou,
             paths::app_paths,
             paths::reveal_dir,
             share::open_shared,
@@ -186,10 +191,15 @@ pub fn run() {
             unsplash::unsplash_use,
         ])
         .build(tauri::generate_context!())
-        .expect("Fehler beim Starten von flou")
+        .expect("Fehler beim Starten von efeu")
         .run(|app, event| match event {
-            tauri::RunEvent::Exit => share::shutdown(app),
-            // Klick aufs Dock-Symbol, während flou im Hintergrund läuft: Fenster wieder zeigen.
+            tauri::RunEvent::Exit => {
+                share::shutdown(app);
+                if let Ok(dir) = paths::data_dir(app) {
+                    migrate::rename_legacy_bundle(&dir);
+                }
+            }
+            // Klick aufs Dock-Symbol, während efeu im Hintergrund läuft: Fenster wieder zeigen.
             #[cfg(target_os = "macos")]
             tauri::RunEvent::Reopen { .. } => desk::show_main(app),
             _ => {}

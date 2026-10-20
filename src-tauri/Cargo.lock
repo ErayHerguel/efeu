@@ -1212,6 +1212,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
+name = "efeu"
+version = "2.0.0"
+dependencies = [
+ "axum",
+ "base64 0.22.1",
+ "chrono",
+ "cpal",
+ "flate2",
+ "futures-util",
+ "getrandom 0.3.4",
+ "keyring",
+ "reqwest",
+ "rustls",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sqlx",
+ "tar",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-clipboard-manager",
+ "tauri-plugin-dialog",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-notification",
+ "tauri-plugin-opener",
+ "tauri-plugin-process",
+ "tauri-plugin-sql",
+ "tauri-plugin-updater",
+ "tokio",
+ "whisper-rs",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "either"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1393,40 +1427,6 @@ dependencies = [
  "crc32fast",
  "miniz_oxide 0.9.1",
  "zlib-rs",
-]
-
-[[package]]
-name = "flou"
-version = "1.9.1"
-dependencies = [
- "axum",
- "base64 0.22.1",
- "chrono",
- "cpal",
- "flate2",
- "futures-util",
- "getrandom 0.3.4",
- "keyring",
- "reqwest",
- "rustls",
- "serde",
- "serde_json",
- "sha2",
- "sqlx",
- "tar",
- "tauri",
- "tauri-build",
- "tauri-plugin-clipboard-manager",
- "tauri-plugin-dialog",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-notification",
- "tauri-plugin-opener",
- "tauri-plugin-process",
- "tauri-plugin-sql",
- "tauri-plugin-updater",
- "tokio",
- "whisper-rs",
- "windows-sys 0.61.2",
 ]
 
 [[package]]

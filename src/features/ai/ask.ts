@@ -40,8 +40,8 @@ export function askRequest(question: string, context: ContextPage[]): AiRequest 
   const pages = context.map((p) => `<seite titel="${p.title.replace(/"/g, "'")}">\n${p.markdown}\n</seite>`).join('\n\n');
   return {
     feature: 'ask',
-    title: 'Frag flou',
-    system: `Du beantwortest Fragen zum persönlichen Notiz-Workspace in der App flou. Grundlage sind ausschließlich die mitgeschickten Seiten.
+    title: 'Frag efeu',
+    system: `Du beantwortest Fragen zum persönlichen Notiz-Workspace in der App efeu. Grundlage sind ausschließlich die mitgeschickten Seiten.
 - Antworte knapp und konkret in Markdown, in der Sprache der Frage.
 - Nenne die Seiten, auf die du dich stützt, als [[Seitentitel]] (genau der Titel aus dem Attribut), direkt im Text oder am Ende.
 - Steht die Antwort nicht in den Seiten, sag das ehrlich und rate nicht.`,
@@ -61,10 +61,10 @@ export function researchRequest(question: string): AiRequest {
   return {
     feature: 'research',
     title: 'Recherche mit Websuche',
-    system: `Du recherchierst für die Notiz-App flou im Web und schreibst einen übersichtlichen Bericht für eine Notizseite.
+    system: `Du recherchierst für die Notiz-App efeu im Web und schreibst einen übersichtlichen Bericht für eine Notizseite.
 Heute ist der ${today}. Deine Trainingsdaten enden lange vor diesem Datum. Zahlen, Preise, Versionen, Regeln und alles „Aktuelle“ können sich geändert haben: suche danach, bevor du antwortest, auch wenn du dir sicher bist. Dinge, die sich nicht ändern können, brauchen keine Suche.
 - Schreib in der Sprache der Frage, gegliedert mit Überschriften (##) und Stichpunkten, knapp und konkret.
-- Belege Aussagen mit den Suchergebnissen. Füge am Ende keine eigene Quellenliste an, die Quellen ergänzt flou automatisch.
+- Belege Aussagen mit den Suchergebnissen. Füge am Ende keine eigene Quellenliste an, die Quellen ergänzt efeu automatisch.
 - Wenn sich Quellen widersprechen oder etwas unklar bleibt, sag das.`,
     messages: [{ role: 'user', content: question }],
     maxTokens: 16_000,

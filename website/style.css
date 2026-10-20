@@ -134,6 +134,11 @@ h3 {
   color: var(--muted);
   font-size: 19px;
 }
+.lead-note {
+  margin: 10px auto 0;
+  color: var(--muted);
+  font-size: 14px;
+}
 .actions {
   display: flex;
   flex-wrap: wrap;

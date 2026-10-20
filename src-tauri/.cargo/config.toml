@@ -3,5 +3,5 @@
 target-dir = "target.noindex"
 [env]
 # Spracherkennung (whisper.cpp): nicht für die CPU des Build-Rechners optimieren, sondern portabel bauen,
-# sonst stürzt flou auf älteren Prozessoren ab (ggml schaltet das bei gesetztem SOURCE_DATE_EPOCH ab).
+# sonst stürzt efeu auf älteren Prozessoren ab (ggml schaltet das bei gesetztem SOURCE_DATE_EPOCH ab).
 SOURCE_DATE_EPOCH = "1700000000"

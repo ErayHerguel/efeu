@@ -68,7 +68,7 @@ export function inviteLink(status: ShareStatus, member: Member): string | null {
 }
 
 /**
- * Fester Link eines eigenen Geräts: die Startseite auf der flou-Website fragt die aktuelle Adresse
+ * Fester Link eines eigenen Geräts: die Startseite auf der efeu-Website fragt die aktuelle Adresse
  * unter dem geheimen Kanal ab und leitet weiter. Kanal und Schlüssel stehen nur im Fragment (#),
  * das nie an einen Server geht.
  */
@@ -195,7 +195,7 @@ export async function confirmStopSharing(): Promise<boolean> {
   if (!useHosting.getState().live || guests === 0) return true;
   return confirmDialog({
     title: 'Teilen wird beendet',
-    message: `${guests === 1 ? 'Eine Person arbeitet' : `${guests} Personen arbeiten`} gerade mit. Wenn flou schließt, werden sie getrennt; alles Bisherige ist gespeichert.`,
+    message: `${guests === 1 ? 'Eine Person arbeitet' : `${guests} Personen arbeiten`} gerade mit. Wenn efeu schließt, werden sie getrennt; alles Bisherige ist gespeichert.`,
     confirmLabel: 'Trotzdem schließen',
     danger: true,
   });

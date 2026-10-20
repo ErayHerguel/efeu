@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn writes_export_with_assets() {
-        let base = std::env::temp_dir().join(format!("flou-export-test-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("efeu-export-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&base);
         let source = base.join("assets-src");
         fs::create_dir_all(&source).unwrap();
@@ -245,7 +245,7 @@ mod tests {
 
     #[test]
     fn reads_markdown_tree() {
-        let dir = std::env::temp_dir().join(format!("flou-import-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("efeu-import-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(dir.join("Projekt")).unwrap();
         fs::write(dir.join("Projekt.md"), "# Projekt").unwrap();

@@ -3,6 +3,6 @@
 <plist version="1.0">
 <dict>
   <key>NSMicrophoneUsageDescription</key>
-  <string>flou schreibt Vorlesungen mit. Der Ton wird nur auf diesem Mac erkannt und nicht gespeichert.</string>
+  <string>efeu schreibt Vorlesungen mit. Der Ton wird nur auf diesem Mac erkannt und nicht gespeichert.</string>
 </dict>
 </plist>

@@ -118,7 +118,7 @@ mod tests {
 
     #[test]
     fn keeps_newest_seven() {
-        let root = std::env::temp_dir().join(format!("flou-backup-test-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("efeu-backup-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         for day in 1..=10 {
             fs::create_dir_all(root.join(format!("2026-01-{day:02}"))).unwrap();

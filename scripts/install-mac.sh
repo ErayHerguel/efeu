@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP_NAME="flou"
+APP_NAME="efeu"
 CANDIDATES=(
   "src-tauri/target.noindex/aarch64-apple-darwin/release/bundle/macos/$APP_NAME.app"
   "src-tauri/target.noindex/release/bundle/macos/$APP_NAME.app"

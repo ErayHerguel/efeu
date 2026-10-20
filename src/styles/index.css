@@ -285,7 +285,7 @@
   .code-language {
     display: none !important;
   }
-  .flou-editor .toggle[data-open='false'] > .toggle-content > :not(:first-child) {
+  .efeu-editor .toggle[data-open='false'] > .toggle-content > :not(:first-child) {
     display: block;
   }
 }

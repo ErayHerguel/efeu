@@ -34,6 +34,7 @@ import { isRecording } from './features/lecture/lecture';
 import { hydrateUnsplash } from './features/page/covers';
 import { AskDialog } from './features/ai/AskDialog';
 import { useAi } from './features/ai/store';
+import { toast } from './store/toast';
 import { refreshSpend } from './features/ai/usage';
 import { VersionsDialog } from './features/history/VersionsDialog';
 import { runFirstStart } from './features/onboarding/firstRun';
@@ -87,6 +88,13 @@ function bootstrap(): Promise<void> {
       forgetPages(isLive, parentId && isLive(parentId) ? parentId : firstRoot());
     });
     scheduleStartupCheck();
+    // efeu hieß früher flou: einmaliger Hinweis nach der Übernahme bzw. falls flou.app nicht umbenannt werden konnte.
+    invoke<boolean>('migrated_from_flou')
+      .then((migrated) => migrated && toast('Deine Daten aus flou wurden übernommen.'))
+      .catch(() => undefined);
+    invoke<string | null>('legacy_bundle_hint')
+      .then((path) => path && toast(`efeu liegt noch als „flou.app“ unter ${path.replace(/\/[^/]+$/, '')}. Du kannst es im Finder in „efeu.app“ umbenennen.`))
+      .catch(() => undefined);
     startReminders(settings);
     if (IS_MAC) installMenu().catch((err) => console.error('Menü konnte nicht erstellt werden', err));
   })();
@@ -128,7 +136,7 @@ export function App() {
   useEffect(() => {
     const appWindow = getCurrentWindow();
     const unlisten = appWindow.onCloseRequested(async (event) => {
-      // Solange geteilt wird, läuft flou in der Menüleiste weiter (Gäste und eigene Geräte bleiben verbunden).
+      // Solange geteilt wird, läuft efeu in der Menüleiste weiter (Gäste und eigene Geräte bleiben verbunden).
       // Während einer Mitschrift ebenso: Aufnahme und Erkennung laufen im Hintergrund weiter.
       if (useHosting.getState().live || isRecording()) {
         event.preventDefault();

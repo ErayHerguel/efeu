@@ -85,7 +85,7 @@ export function colorName(background: string): NoteColor | 'andere' {
   let dist = Infinity;
   const fills: [NoteColor, string][] = [
     ...(Object.entries(NOTE_FILL) as [NoteColor, string][]),
-    // Farben der Sticky-Note-Knöpfe in flou und der KI-Boards von früher
+    // Farben der Sticky-Note-Knöpfe in efeu und der KI-Boards von früher
     ['yellow', '#fff3a3'],
     ['yellow', '#ffec99'],
     ['pink', '#ffc9c9'],

@@ -1,7 +1,7 @@
 //! Vorlesungen mitschreiben: Mikrofon → lokale Spracherkennung (Whisper) → Text.
 //!
 //! Alles läuft in eigenen Threads, unabhängig vom Fenster: Aufnahme und Erkennung gehen weiter,
-//! während man andere Programme nutzt oder das flou-Fenster geschlossen ist. Der Ton wird nur im
+//! während man andere Programme nutzt oder das efeu-Fenster geschlossen ist. Der Ton wird nur im
 //! Arbeitsspeicher gepuffert, abschnittsweise erkannt und sofort verworfen; es entsteht nie eine
 //! Audiodatei. Erkannter Text geht als Ereignis `lecture` ans Frontend.
 
@@ -171,7 +171,7 @@ async fn download(app: &AppHandle) -> Result<(), String> {
     }
     let url = format!("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/{}", MODEL.0);
     let client = reqwest::Client::builder()
-        .user_agent(concat!("flou/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("efeu/", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(20))
         .read_timeout(Duration::from_secs(120))
         .build()
@@ -257,7 +257,7 @@ pub fn lecture_monitor(app: AppHandle, state: State<'_, Lecture>, device: Option
     let paused = Arc::new(AtomicBool::new(false));
     let thread_stop = stop.clone();
     let handle = std::thread::Builder::new()
-        .name("flou-pegel".into())
+        .name("efeu-pegel".into())
         .spawn(move || {
             if let Err(message) = capture_loop(&app, device.as_deref(), &thread_stop, &paused, None) {
                 emit(&app, LectureEvent::Error { message });
@@ -294,7 +294,7 @@ pub fn lecture_start(app: AppHandle, state: State<'_, Lecture>, language: String
     let capture = {
         let (app, stop, paused, buffer, device) = (app.clone(), stop.clone(), paused.clone(), buffer.clone(), device.clone());
         std::thread::Builder::new()
-            .name("flou-mikrofon".into())
+            .name("efeu-mikrofon".into())
             .spawn(move || {
                 if let Err(message) = capture_loop(&app, device.as_deref(), &stop, &paused, Some(&buffer)) {
                     stop.store(true, Ordering::SeqCst);
@@ -308,7 +308,7 @@ pub fn lecture_start(app: AppHandle, state: State<'_, Lecture>, language: String
     let worker = {
         let (app, stop, buffer, topic) = (app.clone(), stop.clone(), buffer.clone(), topic.clone());
         std::thread::Builder::new()
-            .name("flou-whisper".into())
+            .name("efeu-whisper".into())
             .spawn(move || {
                 if let Err(message) = worker_loop(&app, &path, language.as_deref(), &topic, sens, &stop, &buffer) {
                     stop.store(true, Ordering::SeqCst);
@@ -443,7 +443,7 @@ fn capture_loop(app: &AppHandle, device_name: Option<&str>, stop: &AtomicBool, p
 
 fn mic_error(raw: &str) -> String {
     if raw.to_lowercase().contains("permission") {
-        "Kein Zugriff aufs Mikrofon. Erlaube es unter Systemeinstellungen → Datenschutz & Sicherheit → Mikrofon → flou.".into()
+        "Kein Zugriff aufs Mikrofon. Erlaube es unter Systemeinstellungen → Datenschutz & Sicherheit → Mikrofon → efeu.".into()
     } else {
         format!("Mikrofon: {raw}")
     }

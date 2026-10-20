@@ -1,7 +1,7 @@
 {
-  "name": "flou",
+  "name": "efeu",
   "private": true,
-  "version": "1.9.1",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "node scripts/excalidraw-assets.mjs && vite",

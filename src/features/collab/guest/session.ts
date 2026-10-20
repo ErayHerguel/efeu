@@ -15,7 +15,7 @@ import { guestBoard } from './boards';
 import { connection, HostError } from './connection';
 import { guestDoc } from './docs';
 
-const TOKEN_KEY = 'flou-token';
+const TOKEN_KEY = 'efeu-token';
 /** So viele erfolglose Versuche, dann sucht ein eigenes Gerät die neue Adresse über die Startseite. */
 const LAUNCHER_AFTER_ATTEMPTS = 4;
 
@@ -45,13 +45,13 @@ function readToken(): string | null {
   if (fromLauncher) {
     topic = fromLauncher[1];
     try {
-      sessionStorage.setItem('flou-topic', topic);
+      sessionStorage.setItem('efeu-topic', topic);
     } catch {
       // nur für diese Sitzung nötig
     }
   } else {
     try {
-      topic = sessionStorage.getItem('flou-topic');
+      topic = sessionStorage.getItem('efeu-topic');
     } catch {
       topic = null;
     }

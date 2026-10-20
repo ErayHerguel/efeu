@@ -230,7 +230,7 @@ export async function askAi(
   opts: { onText?: (delta: string, full: string) => void; signal?: AbortSignal; onStart?: (model: ModelId) => void } = {},
 ): Promise<AiResult | null> {
   const state = useAi.getState();
-  if (!state.available) throw new AiError('KI gibt es nur in der flou-App.');
+  if (!state.available) throw new AiError('KI gibt es nur in der efeu-App.');
   if (!state.keySet && !state.mock) {
     useUI.getState().setOverlay('settings');
     useSettingsSection.setState({ section: 'ai' });

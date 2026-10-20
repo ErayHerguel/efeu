@@ -3,12 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>flou</title>
+    <title>efeu</title>
     <meta name="robots" content="noindex" />
     <meta name="referrer" content="no-referrer" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="flou" />
+    <meta name="apple-mobile-web-app-title" content="efeu" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="icon" href="icon-192.png" />
@@ -94,15 +94,15 @@
     <main>
       <img src="apple-touch-icon.png" alt="" />
       <h1 id="title">Verbinde mit deinem Computer …</h1>
-      <p id="text">flou sucht die aktuelle Adresse.</p>
+      <p id="text">efeu sucht die aktuelle Adresse.</p>
       <div class="spinner" id="spinner"></div>
       <button id="retry" hidden>Erneut versuchen</button>
     </main>
     <script>
-      // Startseite für eigene Geräte: findet die aktuelle Adresse des Computers, auf dem flou läuft.
+      // Startseite für eigene Geräte: findet die aktuelle Adresse des Computers, auf dem efeu läuft.
       // Kanal und Zugangsschlüssel stehen im Fragment (#), das nie an einen Server geht. Bei ntfy.sh
       // liegt unter dem geheimen Kanal nur die Adresse; ohne Schlüssel kommt dort niemand hinein.
-      const KEY = 'flou-device';
+      const KEY = 'efeu-device';
       const title = document.getElementById('title');
       const text = document.getElementById('text');
       const spinner = document.getElementById('spinner');
@@ -117,6 +117,10 @@
           return fromLink;
         }
         try {
+          // efeu hieß früher flou: gekoppeltes Gerät vom alten Schlüssel übernehmen.
+          const old = localStorage.getItem('flou-device');
+          if (old && !localStorage.getItem(KEY)) localStorage.setItem(KEY, old);
+          if (old) localStorage.removeItem('flou-device');
           return localStorage.getItem(KEY);
         } catch {
           return null;
@@ -163,7 +167,7 @@
       let timer = null;
       async function connect() {
         clearTimeout(timer);
-        show('Verbinde mit deinem Computer …', 'flou sucht die aktuelle Adresse.', true);
+        show('Verbinde mit deinem Computer …', 'efeu sucht die aktuelle Adresse.', true);
         try {
           const url = await latestAddress();
           if (url && (await reachable(url))) {
@@ -173,7 +177,7 @@
         } catch {}
         show(
           'Computer nicht erreichbar',
-          'flou muss auf deinem Computer geöffnet sein und das Teilen laufen. Es wird automatisch weiter versucht.',
+          'efeu muss auf deinem Computer geöffnet sein und das Teilen laufen. Es wird automatisch weiter versucht.',
           false,
         );
         timer = setTimeout(connect, 8000);
@@ -181,7 +185,7 @@
 
       retry.addEventListener('click', connect);
       if (valid) connect();
-      else show('Link unvollständig', 'Öffne diese Seite über den QR-Code in flou: Einstellungen → Meine Geräte → iPhone verbinden.', false);
+      else show('Link unvollständig', 'Öffne diese Seite über den QR-Code in efeu: Einstellungen → Meine Geräte → iPhone verbinden.', false);
       if (!valid) retry.hidden = true;
     </script>
   </body>

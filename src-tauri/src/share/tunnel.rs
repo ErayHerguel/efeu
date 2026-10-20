@@ -68,7 +68,7 @@ fn http_client() -> Result<reqwest::Client, String> {
         let _ = rustls::crypto::ring::default_provider().install_default();
     }
     reqwest::Client::builder()
-        .user_agent(concat!("flou/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("efeu/", env!("CARGO_PKG_VERSION")))
         .timeout(Duration::from_secs(120))
         .build()
         .map_err(|e| e.to_string())
@@ -78,7 +78,7 @@ fn http_client() -> Result<reqwest::Client, String> {
 async fn publish_address(topic: &str, url: &str) -> Result<(), String> {
     http_client()?
         .post(format!("https://ntfy.sh/{topic}"))
-        .header("X-Title", "flou")
+        .header("X-Title", "efeu")
         .body(url.to_string())
         .send()
         .await
@@ -387,9 +387,11 @@ mod tests {
 
     #[test]
     fn accepts_only_long_random_topics() {
+        assert!(valid_topic("efeu-3f9a8c7d6e5b4a3f2e1d0c9b"));
+        // Kanäle aus flou-Zeiten bleiben gültig (gekoppelte iPhones finden den Computer weiter).
         assert!(valid_topic("flou-3f9a8c7d6e5b4a3f2e1d0c9b"));
         assert!(!valid_topic("kurz"));
-        assert!(!valid_topic("flou/../../admin-0123456789abcdef"));
+        assert!(!valid_topic("efeu/../../admin-0123456789abcdef"));
     }
 
     #[test]

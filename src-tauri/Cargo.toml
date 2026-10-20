@@ -1,12 +1,12 @@
 [package]
-name = "flou"
-version = "1.9.1"
-description = "flou – lokale Notizen und Datenbanken"
+name = "efeu"
+version = "2.0.0"
+description = "efeu – lokale Notizen und Datenbanken"
 edition = "2021"
 publish = false
 
 [lib]
-name = "flou_lib"
+name = "efeu_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

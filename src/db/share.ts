@@ -35,9 +35,9 @@ export function newToken(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** Geheimer Kanalname, unter dem flou eigenen Geräten seine aktuelle Adresse meldet. */
+/** Geheimer Kanalname, unter dem efeu eigenen Geräten seine aktuelle Adresse meldet. */
 export function newTopic(): string {
-  return `flou-${newToken().slice(0, 40)}`;
+  return `efeu-${newToken().slice(0, 40)}`;
 }
 
 export function insertMember(m: Member): Statement {

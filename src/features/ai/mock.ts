@@ -4,7 +4,7 @@ import type { ModelId } from './models';
 import type { MessageAccumulator } from './stream';
 
 /**
- * Simulierter Claude für Entwicklungs-Builds (FLOU_AI_MOCK=1): erzeugt dieselben Stream-Ereignisse
+ * Simulierter Claude für Entwicklungs-Builds (EFEU_AI_MOCK=1): erzeugt dieselben Stream-Ereignisse
  * wie die API, mit plausiblen Token-Zahlen, aber ohne Netzwerk, Schlüssel und Kosten.
  */
 

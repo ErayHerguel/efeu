@@ -16,7 +16,7 @@ const EXAMPLES: { label: string; input: number; output: [number, number]; search
   { label: 'Absatz umschreiben', input: 700, output: [300, 900] },
   { label: 'Seite zusammenfassen (ca. 2000 Wörter)', input: 3_500, output: [600, 2_000] },
   { label: 'PDF mit 15 Seiten → Board', input: 25_000, output: [4_000, 10_000] },
-  { label: 'Frag flou (Antwort aus deinen Seiten)', input: 8_000, output: [800, 2_500] },
+  { label: 'Frag efeu (Antwort aus deinen Seiten)', input: 8_000, output: [800, 2_500] },
   { label: 'Recherche mit Websuche', input: 30_000, output: [3_000, 8_000], searches: [3, 5] },
 ];
 
@@ -64,7 +64,7 @@ function KeySection() {
   const remove = async () => {
     const ok = await confirmDialog({
       title: 'API-Schlüssel entfernen?',
-      message: 'flou löscht den Schlüssel aus dem Schlüsselbund. Die KI-Funktionen sind danach aus, bis du wieder einen einträgst.',
+      message: 'efeu löscht den Schlüssel aus dem Schlüsselbund. Die KI-Funktionen sind danach aus, bis du wieder einen einträgst.',
       confirmLabel: 'Entfernen',
       danger: true,
     });
@@ -94,8 +94,8 @@ function KeySection() {
       ) : (
         <>
           <p className="mb-2 text-sm text-muted">
-            flou nutzt Claude von Anthropic mit deinem eigenen Schlüssel. Du zahlst nur, was du verbrauchst, direkt bei Anthropic. Ohne
-            Schlüssel bleibt flou komplett offline.
+            efeu nutzt Claude von Anthropic mit deinem eigenen Schlüssel. Du zahlst nur, was du verbrauchst, direkt bei Anthropic. Ohne
+            Schlüssel bleibt efeu komplett offline.
           </p>
           <div className="flex gap-2">
             <input
@@ -122,7 +122,7 @@ function KeySection() {
         </>
       )}
       <p className="mt-2 text-xs text-faint">
-        Der Schlüssel liegt im Schlüsselbund deines Systems, nie in der flou-Datenbank. Anfragen gehen nur an api.anthropic.com und nur,
+        Der Schlüssel liegt im Schlüsselbund deines Systems, nie in der efeu-Datenbank. Anfragen gehen nur an api.anthropic.com und nur,
         wenn du eine KI-Aktion startest. Gäste und verbundene Geräte können die KI nicht nutzen.
       </p>
     </section>
@@ -226,8 +226,8 @@ function SpendingSection() {
           ))}
         </div>
         <p className="mt-1.5 text-xs text-faint">
-          Vor teureren Aktionen zeigt flou die geschätzten Kosten für jedes Modell und fragt nach. Droht das Monatsbudget überschritten
-          zu werden, fragt flou immer.
+          Vor teureren Aktionen zeigt efeu die geschätzten Kosten für jedes Modell und fragt nach. Droht das Monatsbudget überschritten
+          zu werden, fragt efeu immer.
         </p>
       </div>
       <div>
@@ -290,7 +290,7 @@ function Overview() {
   const reset = async () => {
     const ok = await confirmDialog({
       title: 'Kostenverlauf zurücksetzen?',
-      message: 'Die Übersicht in flou beginnt wieder bei null. Deine Abrechnung bei Anthropic ändert sich dadurch nicht.',
+      message: 'Die Übersicht in efeu beginnt wieder bei null. Deine Abrechnung bei Anthropic ändert sich dadurch nicht.',
       confirmLabel: 'Zurücksetzen',
       danger: true,
     });

@@ -4,11 +4,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP_NAME="flou"
-BUNDLE_ID="app.flou.desktop"
+APP_NAME="efeu"
+BUNDLE_ID="app.efeu.desktop"
 ROOT="src-tauri/target.noindex/aarch64-apple-darwin/release/bundle"
 APP="$ROOT/macos/$APP_NAME.app"
-BIN="$APP/Contents/MacOS/flou"
+BIN="$APP/Contents/MacOS/efeu"
 
 fail() { echo "✗ $1" >&2; exit 1; }
 ok() { echo "✓ $1"; }
@@ -29,7 +29,7 @@ ok "Ad-hoc-Signatur gültig"
 
 TMP_HOME=$(mktemp -d)
 DATA="$TMP_HOME/Library/Application Support/$BUNDLE_ID"
-LOG="$TMP_HOME/flou.log"
+LOG="$TMP_HOME/efeu.log"
 trap 'pkill -f "$BIN" >/dev/null 2>&1 || true; rm -rf "$TMP_HOME"' EXIT
 
 run_once() {
@@ -52,7 +52,7 @@ run_once() {
 FIRST=$(run_once)
 ok "Erster Start (inkl. Migrationen und Willkommensseite): ${FIRST} ms"
 
-DB="$DATA/flou.db"
+DB="$DATA/efeu.db"
 [[ -f "$DB" ]] || fail "Datenbank wurde nicht angelegt"
 MIGRATIONS=$(sqlite3 "$DB" "SELECT count(*) FROM _sqlx_migrations WHERE success = 1")
 [[ "$MIGRATIONS" == "9" ]] || fail "Erwartet 9 Migrationen, gefunden $MIGRATIONS"

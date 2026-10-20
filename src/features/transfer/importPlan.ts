@@ -67,7 +67,7 @@ function safeDecode(value: string): string {
   }
 }
 
-/** Entfernt eine führende H1, wenn sie dem Seitentitel entspricht (so exportiert flou selbst). */
+/** Entfernt eine führende H1, wenn sie dem Seitentitel entspricht (so exportiert efeu selbst). */
 function takeTitle(doc: JSONContent, fallback: string): { title: string; doc: JSONContent } {
   const first = doc.content?.[0];
   if (first?.type === 'heading' && first.attrs?.level === 1) {

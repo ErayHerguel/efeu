@@ -48,7 +48,7 @@ function UnsplashSetup() {
           <button onClick={() => void openExternal('https://unsplash.com/oauth/applications')} className="text-accent hover:underline">
             unsplash.com/developers
           </button>{' '}
-          anmelden und „New Application“ anlegen (Name z. B. „flou“).
+          anmelden und „New Application“ anlegen (Name z. B. „efeu“).
         </li>
         <li>Den „Access Key“ kopieren und hier einfügen.</li>
       </ol>
@@ -70,7 +70,7 @@ function UnsplashSetup() {
           {busy ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />} Speichern
         </button>
       </div>
-      <p className="mt-3 text-xs text-faint">Der Schlüssel liegt im Schlüsselbund. Gewählte Fotos speichert flou lokal, sie erscheinen auch offline.</p>
+      <p className="mt-3 text-xs text-faint">Der Schlüssel liegt im Schlüsselbund. Gewählte Fotos speichert efeu lokal, sie erscheinen auch offline.</p>
     </div>
   );
 }
@@ -158,7 +158,7 @@ function UnsplashTab({ pageId }: { pageId: string }) {
       </div>
       <p className="mt-2 text-xs text-faint">
         Fotos von{' '}
-        <a href="https://unsplash.com/?utm_source=flou&utm_medium=referral" className="hover:underline">
+        <a href="https://unsplash.com/?utm_source=efeu&utm_medium=referral" className="hover:underline">
           Unsplash
         </a>
         , frei nutzbar. Der Name des Fotografen erscheint am Titelbild.

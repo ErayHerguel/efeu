@@ -34,7 +34,7 @@ import { useDatabases } from '../../../store/databases';
 
 /**
  * Die KI-Leiste: eine Anweisung (plus angehängte PDF oder Seite) für die geöffnete Seite oder das
- * geöffnete Board. Claude liefert Änderungen, flou zeigt sie als Vorschau; übernommen wird erst auf Klick.
+ * geöffnete Board. Claude liefert Änderungen, efeu zeigt sie als Vorschau; übernommen wird erst auf Klick.
  */
 
 export interface Preview {

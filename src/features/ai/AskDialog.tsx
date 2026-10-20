@@ -103,7 +103,7 @@ function Dialog({ initialMode }: { initialMode: Mode }) {
       setStatus('done');
     } catch (err) {
       setStatus('idle');
-      if (!(err instanceof AiCancelled)) reportError(mode === 'ask' ? 'Frag flou' : 'Recherche', err);
+      if (!(err instanceof AiCancelled)) reportError(mode === 'ask' ? 'Frag efeu' : 'Recherche', err);
     }
   };
 

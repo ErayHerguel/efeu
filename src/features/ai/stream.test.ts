@@ -8,7 +8,7 @@ const events = [
   { type: 'content_block_stop', index: 0 },
   { type: 'content_block_start', index: 1, content_block: { type: 'server_tool_use', id: 'srv_1', name: 'web_search', input: {} } },
   { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: '{"query":' } },
-  { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: '"flou"}' } },
+  { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: '"efeu"}' } },
   { type: 'content_block_stop', index: 1 },
   { type: 'content_block_start', index: 2, content_block: { type: 'text', text: '' } },
   { type: 'content_block_delta', index: 2, delta: { type: 'text_delta', text: 'Hallo ' } },
@@ -27,7 +27,7 @@ describe('MessageAccumulator', () => {
     expect(acc.text).toBe('Hallo Welt');
     expect(deltas).toEqual(['Hallo ', 'Welt']);
     expect(acc.content[0]).toMatchObject({ type: 'thinking', signature: 'sig' });
-    expect(acc.content[1].input).toEqual({ query: 'flou' });
+    expect(acc.content[1].input).toEqual({ query: 'efeu' });
     expect(acc.citations).toEqual([{ url: 'https://a.de', title: 'A' }]);
     expect(acc.stopReason).toBe('end_turn');
     expect(acc.model).toBe('claude-opus-5-5');

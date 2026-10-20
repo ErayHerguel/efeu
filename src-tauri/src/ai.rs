@@ -51,7 +51,9 @@ async fn api_key(app: &AppHandle) -> Result<String, String> {
     let entry = entry(app)?;
     let key = blocking(move || match entry.get_password() {
         Ok(key) => Ok(key),
-        Err(keyring::Error::NoEntry) => Err("Kein API-Schlüssel hinterlegt. Trag ihn in den Einstellungen unter „KI“ ein.".into()),
+        // efeu hieß früher flou: Schlüssel von dort übernehmen.
+        Err(keyring::Error::NoEntry) => crate::migrate::take_old_secret(KEY_ACCOUNT, &entry)
+            .ok_or_else(|| "Kein API-Schlüssel hinterlegt. Trag ihn in den Einstellungen unter „KI“ ein.".to_string()),
         Err(e) => Err(format!("Schlüsselbund: {e}")),
     })
     .await?;
@@ -88,7 +90,7 @@ fn http_client(streaming: bool) -> Result<reqwest::Client, String> {
         let _ = rustls::crypto::ring::default_provider().install_default();
     }
     let builder = reqwest::Client::builder()
-        .user_agent(concat!("flou/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("efeu/", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(20));
     // Beim Streamen schickt die API regelmäßig Pings; Stille über Minuten heißt: Verbindung tot.
     let builder = if streaming { builder.read_timeout(Duration::from_secs(180)) } else { builder.timeout(Duration::from_secs(60)) };
@@ -259,10 +261,10 @@ fn event_data(raw: &[u8]) -> Option<String> {
 }
 
 /// Simulierter Claude für Tests ohne Schlüssel und ohne Kosten: nur in Entwicklungs-Builds
-/// (eigene Bundle-ID) und nur mit FLOU_AI_MOCK=1 beim Start.
+/// (eigene Bundle-ID) und nur mit EFEU_AI_MOCK=1 beim Start.
 #[tauri::command]
 pub fn ai_mock(app: AppHandle) -> bool {
-    app.config().identifier != "app.flou.desktop" && std::env::var("FLOU_AI_MOCK").is_ok_and(|v| v == "1")
+    app.config().identifier != "app.efeu.desktop" && std::env::var("EFEU_AI_MOCK").is_ok_and(|v| v == "1")
 }
 
 #[tauri::command]

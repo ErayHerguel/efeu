@@ -46,7 +46,7 @@ export async function checkForUpdate(manual = false): Promise<void> {
   try {
     const update = await check();
     if (!update) {
-      if (manual) toast('flou ist auf dem neuesten Stand');
+      if (manual) toast('efeu ist auf dem neuesten Stand');
       return;
     }
     pending = update;
@@ -62,7 +62,7 @@ export async function checkForUpdate(manual = false): Promise<void> {
 export function describeCheckError(err: unknown): string {
   const message = String(err instanceof Error ? err.message : err).toLowerCase();
   if (message.includes('release json') || message.includes('404') || message.includes('not found')) {
-    return 'flou ist auf dem neuesten Stand';
+    return 'efeu ist auf dem neuesten Stand';
   }
   if (/(network|connect|dns|timed? ?out|offline|resolve|internet)/.test(message)) {
     return 'Keine Verbindung zu GitHub. Bitte später erneut versuchen.';

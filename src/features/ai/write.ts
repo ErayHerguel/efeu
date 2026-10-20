@@ -50,12 +50,12 @@ const INSTRUCTIONS: Partial<Record<WriteAction, string>> = {
   german: 'Übersetze den Text ins Deutsche. Natürlich klingend, nicht wörtlich.',
 };
 
-const SYSTEM_REWRITE = `Du bist die Schreibhilfe in der Notiz-App flou.
+const SYSTEM_REWRITE = `Du bist die Schreibhilfe in der Notiz-App efeu.
 Du bekommst einen Text aus einer Notiz und eine Anweisung. Antworte ausschließlich mit dem überarbeiteten Text in Markdown: keine Einleitung, keine Erklärung, keine Anführungszeichen um das Ergebnis.
 Behalte die Sprache des Textes bei, außer die Anweisung verlangt eine Übersetzung.
 Behalte die Struktur bei (Überschriften, Listen, Aufgaben "- [ ]", Fett, Links). Seitenlinks in der Form [[Titel]] bleiben unverändert erhalten.`;
 
-const SYSTEM_PAGE = `Du bist die Schreibhilfe in der Notiz-App flou. Du arbeitest mit dem Inhalt einer Notizseite (Markdown, Seitenlinks als [[Titel]]).
+const SYSTEM_PAGE = `Du bist die Schreibhilfe in der Notiz-App efeu. Du arbeitest mit dem Inhalt einer Notizseite (Markdown, Seitenlinks als [[Titel]]).
 Antworte ausschließlich mit dem gewünschten Ergebnis in Markdown, ohne Einleitung oder Schlusssatz. Schreib in der Sprache der Seite.`;
 
 /** Grobe Token-Schätzung für die Ausgabe-Spanne (die Eingabe wird exakt gezählt). */

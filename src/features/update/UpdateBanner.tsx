@@ -13,7 +13,7 @@ export function UpdateBanner() {
           <Download size={16} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="font-medium">flou {version} ist verfügbar</div>
+          <div className="font-medium">efeu {version} ist verfügbar</div>
           <div className="text-xs text-muted">
             {phase === 'downloading' ? `Wird geladen … ${progress} %` : phase === 'ready' ? 'Wird neu gestartet …' : 'Deine Daten bleiben erhalten.'}
           </div>

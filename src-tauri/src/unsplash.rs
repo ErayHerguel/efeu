@@ -14,7 +14,7 @@ use tauri::{AppHandle, Manager, State};
 const API: &str = "https://api.unsplash.com";
 const KEY_ACCOUNT: &str = "unsplash-access-key";
 /// Für Links zu Fotografen und Fotos verlangt Unsplash diese Kennzeichnung.
-const UTM: &str = "utm_source=flou&utm_medium=referral";
+const UTM: &str = "utm_source=efeu&utm_medium=referral";
 
 pub struct Unsplash {
     key: Mutex<Option<String>>,
@@ -42,7 +42,7 @@ async fn access_key(app: &AppHandle) -> Result<String, String> {
     let entry = entry(app)?;
     let key = blocking(move || match entry.get_password() {
         Ok(key) => Ok(key),
-        Err(keyring::Error::NoEntry) => Err("Kein Unsplash-Schlüssel hinterlegt.".into()),
+        Err(keyring::Error::NoEntry) => crate::migrate::take_old_secret(KEY_ACCOUNT, &entry).ok_or_else(|| "Kein Unsplash-Schlüssel hinterlegt.".to_string()),
         Err(e) => Err(format!("Schlüsselbund: {e}")),
     })
     .await?;
@@ -81,7 +81,7 @@ fn client() -> Result<reqwest::Client, String> {
         let _ = rustls::crypto::ring::default_provider().install_default();
     }
     reqwest::Client::builder()
-        .user_agent(concat!("flou/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("efeu/", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(15))
         .timeout(Duration::from_secs(60))
         .build()
@@ -216,7 +216,7 @@ mod tests {
             "user": { "name": "Ana", "links": { "html": "https://unsplash.com/@ana" } }
         });
         let p = photo(&v).unwrap();
-        assert_eq!(p.author_url, "https://unsplash.com/@ana?utm_source=flou&utm_medium=referral");
+        assert_eq!(p.author_url, "https://unsplash.com/@ana?utm_source=efeu&utm_medium=referral");
         assert_eq!(p.description, "Berge");
         assert!(photo(&serde_json::json!({ "id": "x" })).is_none());
     }

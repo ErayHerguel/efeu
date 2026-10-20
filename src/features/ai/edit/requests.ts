@@ -34,7 +34,7 @@ function content(attachments: Attachment[], body: string): Content {
   return s.blocks.length ? [...s.blocks, { type: 'text', text }] : text;
 }
 
-const SYSTEM_PAGE = `Du bearbeitest Notizseiten in der App flou nach Anweisung.
+const SYSTEM_PAGE = `Du bearbeitest Notizseiten in der App efeu nach Anweisung.
 Die Seite kommt als nummerierte Blöcke in Markdown. Antworte nur mit Änderungen (ops):
 - replace: Block ersetzen. insert_after / insert_before: neue Blöcke neben einem Block. delete: Block löschen.
 - markdown darf mehrere Blöcke enthalten: Überschriften (#, ##, ###), Absätze, Listen, Aufgaben "- [ ] …", Tabellen, Zitate, Code, Trennlinien "---", Callouts als "> 💡 Text", Fett, Kursiv, Links.
@@ -80,7 +80,7 @@ export function pageEditRequest(opts: {
   };
 }
 
-const SYSTEM_BOARD = `Du bearbeitest ein digitales Whiteboard (Stil wie Miro) in der App flou nach Anweisung.
+const SYSTEM_BOARD = `Du bearbeitest ein digitales Whiteboard (Stil wie Miro) in der App efeu nach Anweisung.
 Das Board kommt als Liste: <gruppe> (Rahmen mit Überschrift) mit <postit>s, lose <postit>s und freie <text>e, jeweils mit kurzer id.
 Antworte mit Änderungen (ops):
 - edit: Text eines Post-its (n…), eines Texts (t…) oder die Überschrift einer Gruppe (g…) ersetzen.
@@ -125,7 +125,7 @@ export function boardEditRequest(opts: {
   };
 }
 
-const SYSTEM_DB = `Du bearbeitest eine Datenbank (Tabelle) in der App flou nach Anweisung.
+const SYSTEM_DB = `Du bearbeitest eine Datenbank (Tabelle) in der App efeu nach Anweisung.
 Du bekommst die Spalten mit Typ und die Einträge mit kurzer id (r1, r2, …). Antworte mit:
 - add: neue Einträge (title + values), z. B. aus angehängten Quellen.
 - update: geänderte Einträge per id. title nur ausfüllen, wenn sich der Titel ändert, sonst "". values nur mit geänderten Spalten.
