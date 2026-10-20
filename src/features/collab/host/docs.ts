@@ -59,8 +59,33 @@ function awarenessClients(update: Uint8Array): number[] {
  */
 export class DocHub {
   private entries = new Map<string, Promise<Entry>>();
+  private loaded = new Map<string, Entry>();
 
-  constructor(private send: (targets: number[], message: ServerMessage) => void) {}
+  /**
+   * `load` liefert das Y.Doc einer Seite. Ohne eigene Cloud wird es aus dem gespeicherten Inhalt neu
+   * aufgebaut; mit Cloud kommt es aus dem abgeglichenen Yjs-Zustand (sonst passten die Stände nicht zusammen).
+   */
+  constructor(
+    private send: (targets: number[], message: ServerMessage) => void,
+    private load?: (pageId: string) => Promise<Y.Doc>,
+  ) {}
+
+  /**
+   * Dokument einer Seite, die gerade bearbeitet wird (für den Cloud-Abgleich). Ein nur noch
+   * zwischengespeichertes wird verworfen: In die Seite kann inzwischen direkt geschrieben worden sein.
+   */
+  peek(pageId: string): Y.Doc | undefined {
+    const entry = this.loaded.get(pageId);
+    if (!entry) return undefined;
+    if (entry.hostRefs > 0 || entry.guests.size > 0) return entry.doc;
+    if (entry.idle) clearTimeout(entry.idle);
+    entry.idle = null;
+    this.entries.delete(pageId);
+    this.loaded.delete(pageId);
+    entry.awareness.destroy();
+    entry.doc.destroy();
+    return undefined;
+  }
 
   private open(pageId: string): Promise<Entry> {
     let entry = this.entries.get(pageId);
@@ -79,14 +104,17 @@ export class DocHub {
   private async create(pageId: string): Promise<Entry> {
     // Ausstehende Änderungen aus dem normalen Editor zuerst schreiben, dann den Stand laden.
     await flush();
-    const json = (await loadDoc(pageId)) ?? { type: 'doc', content: [{ type: 'paragraph' }] };
-    const doc = prosemirrorJSONToYDoc(editorSchema(), json, FIELD);
+    let doc: Y.Doc;
+    if (this.load) doc = await this.load(pageId);
+    else doc = prosemirrorJSONToYDoc(editorSchema(), (await loadDoc(pageId)) ?? { type: 'doc', content: [{ type: 'paragraph' }] }, FIELD);
     const awareness = new Awareness(doc);
     awareness.setLocalState(null);
     const entry: Entry = { pageId, doc, awareness, session: newId(), hostRefs: 0, guests: new Map(), idle: null };
 
+    this.loaded.set(pageId, entry);
     doc.on('update', (update: Uint8Array, origin: unknown) => {
-      this.persist(entry);
+      // Änderungen aus der Cloud hat der Abgleich schon gespeichert.
+      if (origin !== 'cloud') this.persist(entry);
       const targets = [...entry.guests.keys()].filter((conn) => conn !== origin);
       if (targets.length) this.send(targets, { t: 'doc.update', pageId, update: encodeBinary(update) });
     });
@@ -121,6 +149,7 @@ export class DocHub {
       entry.idle = null;
       if (entry.hostRefs > 0 || entry.guests.size > 0) return;
       this.entries.delete(entry.pageId);
+      this.loaded.delete(entry.pageId);
       entry.awareness.destroy();
       entry.doc.destroy();
     }, IDLE_MS);
@@ -216,5 +245,6 @@ export class DocHub {
       entry.doc.destroy();
     }
     this.entries.clear();
+    this.loaded.clear();
   }
 }

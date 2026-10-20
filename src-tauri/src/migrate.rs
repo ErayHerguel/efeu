@@ -20,10 +20,18 @@ const NEW_DB: &str = "efeu.db";
 /// Ob beim aktuellen Start Daten aus flou übernommen wurden (für einen einmaligen Hinweis).
 pub struct Migrated(AtomicBool);
 
+/// Übernommen wird nur in der echten App, nie in Test- oder Entwicklungsversionen (eigene Kennung):
+/// die sollen weder echte Daten kopieren noch Schlüssel aus dem Schlüsselbund von flou mitnehmen.
+static ENABLED: AtomicBool = AtomicBool::new(false);
+const IDENTIFIER: &str = "app.efeu.desktop";
+
 pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("efeu-migrate")
         .setup(|app, _api| {
+            let enabled = app.config().identifier == IDENTIFIER;
+            ENABLED.store(enabled, Ordering::SeqCst);
             let migrated = match app.path().app_config_dir() {
+                Ok(_) if !enabled => false,
                 Ok(dir) => migrate_data(&dir).unwrap_or_else(|err| {
                     eprintln!("Daten aus flou konnten nicht übernommen werden: {err}");
                     false
@@ -48,6 +56,9 @@ pub fn migrated_from_flou(state: State<'_, Migrated>) -> bool {
 /// schreiben, alten löschen. Fehler (macOS fragt bei anderer Signatur eventuell nach) werden still
 /// ignoriert; dann trägt man den Schlüssel eben neu ein.
 pub fn take_old_secret(account: &str, new_entry: &keyring::Entry) -> Option<String> {
+    if !ENABLED.load(Ordering::SeqCst) {
+        return None;
+    }
     let old = keyring::Entry::new(OLD_IDENTIFIER, account).ok()?;
     let secret = old.get_password().ok()?;
     if new_entry.set_password(&secret).is_ok() {

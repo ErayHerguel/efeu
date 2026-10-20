@@ -14,6 +14,7 @@ import { GUEST } from '../../lib/mode';
 import { IS_MAC } from '../../lib/platform';
 import { useNarrow } from '../../lib/useNarrow';
 import { ConnectionIndicator } from '../collab/guest/GuestIdentity';
+import { CloudIndicator } from '../cloud/CloudSettings';
 import { PageShareButton } from '../collab/host/PageShare';
 import { PagePresence } from '../collab/presence';
 import { useCanEdit } from '../collab/sources';
@@ -84,6 +85,7 @@ export function TopBar({ pageId }: { pageId: string | null }) {
 
       <div data-tauri-drag-region className="h-full flex-1" />
       {GUEST ? <ConnectionIndicator /> : <SaveIndicator />}
+      {!GUEST && <CloudIndicator />}
       <PagePresence />
       {page && !GUEST && editable && page.type === 'page' && (
         <IconButton icon={Mic} label={recording ? 'Mitschrift läuft' : 'Vorlesung mitschreiben'} onClick={() => openLectureStart(page.id)} />

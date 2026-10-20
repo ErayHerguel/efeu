@@ -20,7 +20,8 @@ import {
 import { LAUNCHER_URL } from '../../../app.config';
 import { newId } from '../../../lib/ids';
 import { confirmDialog } from '../../../store/confirm';
-import { reportError } from '../../../store/toast';
+import { reportError, toast } from '../../../store/toast';
+import { useCloud } from '../../cloud/cloud';
 import { usePresence } from '../presence';
 import type { Grant, Role } from '../access';
 import { startHub, stopHub, syncAccess } from './hub';
@@ -106,6 +107,11 @@ export const useHosting = create<HostingState>((set, get) => ({
 
   async start() {
     if (get().live) return;
+    // Mit eigener Cloud laufen Editor und Boards über den Abgleich; beides gleichzeitig ginge durcheinander.
+    if (useCloud.getState().phase !== 'off') {
+      toast('Mit eigener Cloud wird über die Cloud geteilt, nicht über diesen Computer.');
+      return;
+    }
     try {
       await flush();
       await startHub();

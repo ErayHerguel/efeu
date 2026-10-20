@@ -8,7 +8,15 @@ import { collectLinkTargets } from '../lib/doc';
 import { ackedOf, boardChanges, mergeBoard, type Acked } from './boards';
 import { decode, docJson, encode, foldJson, isEmptyUpdate, openDoc, pendingUpdate } from './docs';
 import { applyRowStatements, installCapture, loadTables, seedStatements, type TableInfo } from './tables';
-import type { BoardChange, Change, DocChange, RowChange } from './types';
+import type { BoardChange, BoardElement, Change, DocChange, RowChange } from './types';
+
+/** Anbindung an geöffnete Editoren und Boards (in der App; auf dem Server ohne). */
+export interface ReplicaHooks {
+  /** Im Editor geöffnetes Y.Doc einer Seite. Es ist aktueller als der gespeicherte Inhalt. */
+  openDoc?(page: string): Y.Doc | undefined;
+  /** Nach dem Zusammenführen eines Boards: übernommene Elemente für eine offene Ansicht. */
+  boardMerged?(page: string, elements: BoardElement[], files: StoredScene['files']): void;
+}
 
 /** Was beim Hochladen verschickt wurde und nach der Bestätigung als erledigt gilt. */
 export interface Outbox {
@@ -45,7 +53,10 @@ export class Replica {
   private tables = new Map<string, TableInfo>();
   private queue: Promise<unknown> = Promise.resolve();
 
-  constructor(private driver: Driver) {}
+  constructor(
+    private driver: Driver,
+    private hooks: ReplicaHooks = {},
+  ) {}
 
   private serial<T>(work: () => Promise<T>): Promise<T> {
     const result = this.queue.then(work);
@@ -103,9 +114,20 @@ export class Replica {
     });
   }
 
-  private async docState(page: string): Promise<{ doc: Y.Doc; acked: string; known: boolean }> {
+  private async docState(page: string): Promise<{ doc: Y.Doc; acked: string; open: boolean }> {
     const [row] = await this.driver.select<{ state: string; acked: string }>('SELECT state, acked FROM sync_docs WHERE page_id = ?', [page]);
-    return { doc: openDoc(row?.state ?? null), acked: row?.acked ?? '', known: Boolean(row) };
+    const open = this.hooks.openDoc?.(page);
+    return { doc: open ?? openDoc(row?.state ?? null), acked: row?.acked ?? '', open: Boolean(open) };
+  }
+
+  /** Y.Doc einer Seite mit allem, was gespeichert ist (zum Öffnen im Editor). */
+  async loadDoc(page: string): Promise<Y.Doc> {
+    return this.serial(async () => {
+      const [row] = await this.driver.select<{ state: string }>('SELECT state FROM sync_docs WHERE page_id = ?', [page]);
+      const doc = openDoc(row?.state ?? null);
+      await this.fold(page, doc);
+      return doc;
+    });
   }
 
   /** Den gespeicherten Inhalt ins Y.Doc übertragen (falls er sich seit dem letzten Mal geändert hat). */
@@ -116,12 +138,13 @@ export class Replica {
   }
 
   private async collectDoc(page: string, statements: Statement[], outbox: Outbox): Promise<DocChange | null> {
-    const { doc, acked } = await this.docState(page);
-    await this.fold(page, doc);
+    const { doc, acked, open } = await this.docState(page);
+    // Ein offenes Dokument enthält schon alles; der gespeicherte Inhalt kann ihm hinterherhinken.
+    if (!open) await this.fold(page, doc);
     statements.push(storeDoc(page, doc));
     const update = pendingUpdate(doc, acked);
     outbox.docs[page] = encode(Y.encodeStateVector(doc));
-    doc.destroy();
+    if (!open) doc.destroy();
     return isEmptyUpdate(update) ? null : { kind: 'doc', page, update: encode(update) };
   }
 
@@ -189,27 +212,31 @@ export class Replica {
 
       const docs = groupBy(changes.filter((c): c is DocChange => c.kind === 'doc'), (c) => c.page);
       for (const [page, updates] of docs) {
-        const { doc } = await this.docState(page);
+        const { doc, acked, open } = await this.docState(page);
         // Was lokal gespeichert, aber noch nicht im Y.Doc ist, zuerst übernehmen: sonst ginge es verloren.
-        await this.fold(page, doc);
+        if (!open) await this.fold(page, doc);
+        const clean = isEmptyUpdate(pendingUpdate(doc, acked));
         for (const u of updates) {
           try {
-            Y.applyUpdate(doc, decode(u.update));
+            Y.applyUpdate(doc, decode(u.update), 'cloud');
           } catch (err) {
             console.error('Ungültige Änderung aus der Cloud verworfen', err);
           }
         }
         const result = docJson(doc);
         statements.push(storeDoc(page, doc));
+        // Hatte das Gerät nichts Eigenes offen, hat die Cloud jetzt genau diesen Stand.
+        if (clean) statements.push({ sql: 'UPDATE sync_docs SET acked = ? WHERE page_id = ?', params: [encode(Y.encodeStateVector(doc)), page] });
         if (result) {
           const text = docText(result.node, (id) => titles.get(id) ?? '');
           statements.push(...saveContent(page, result.json, text, collectLinkTargets(result.json, page), now));
           applied.docs.add(page);
         }
-        doc.destroy();
+        if (!open) doc.destroy();
       }
 
       const boards = groupBy(changes.filter((c): c is BoardChange => c.kind === 'board'), (c) => c.page);
+      const mergedBoards: [string, BoardElement[], StoredScene['files']][] = [];
       for (const [page, updates] of boards) {
         const state = await this.boardState(page);
         let scene = state.scene ?? emptyScene();
@@ -235,12 +262,14 @@ export class Replica {
         }
         statements.push(...saveBoard(page, scene, sceneText(scene.elements), now), storeBoardMeta(page, acked, backgroundHlc));
         applied.boards.add(page);
+        mergedBoards.push([page, updates.flatMap((u) => (Array.isArray(u.elements) ? u.elements : [])), scene.files]);
       }
 
       // Die eigene Uhr nie hinter einer gesehenen Änderung zurückbleiben lassen.
       if (latest) statements.push({ sql: 'UPDATE sync_clock SET ms = max(ms, ?)', params: [latest] });
       statements.push({ sql: 'UPDATE sync_clock SET applying = 0' });
       await this.driver.tx(statements);
+      for (const [page, elements, files] of mergedBoards) this.hooks.boardMerged?.(page, elements, files);
       return applied;
     });
   }

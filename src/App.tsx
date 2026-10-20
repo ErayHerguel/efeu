@@ -48,6 +48,7 @@ import { TrashDialog } from './features/trash/TrashDialog';
 import { useTheme } from './features/useTheme';
 import { UpdateBanner } from './features/update/UpdateBanner';
 import { hydrateUpdates, scheduleStartupCheck } from './features/update/updater';
+import { startCloud } from './features/cloud/cloud';
 import { usePages } from './store/pages';
 import { forgetPages, useUI } from './store/ui';
 
@@ -95,6 +96,7 @@ function bootstrap(): Promise<void> {
     invoke<string | null>('legacy_bundle_hint')
       .then((path) => path && toast(`efeu liegt noch als „flou.app“ unter ${path.replace(/\/[^/]+$/, '')}. Du kannst es im Finder in „efeu.app“ umbenennen.`))
       .catch(() => undefined);
+    startCloud().catch((err) => console.error('Cloud-Abgleich konnte nicht starten', err));
     startReminders(settings);
     if (IS_MAC) installMenu().catch((err) => console.error('Menü konnte nicht erstellt werden', err));
   })();

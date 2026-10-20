@@ -1,6 +1,6 @@
 import { getVersion } from '@tauri-apps/api/app';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import { Copy, Database, Globe, Monitor, Moon, QrCode, RefreshCw, Settings, Smartphone, Sparkles, Sun, Trash2, X, type LucideIcon } from 'lucide-react';
+import { Cloud, Copy, Database, Globe, Monitor, Moon, QrCode, RefreshCw, Settings, Smartphone, Sparkles, Sun, Trash2, X, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { renderSVG } from 'uqr';
 import { IconButton } from '../../components/IconButton';
@@ -19,15 +19,17 @@ import { usePresence } from '../collab/presence';
 import { formatCombo } from '../shortcuts/keys';
 import { useUpdate } from '../update/updater';
 import { AiSettings } from '../ai/AiSettings';
+import { CloudSettings } from '../cloud/CloudSettings';
 import { useSettingsSection } from '../ai/client';
 import { Button, Heading, Toggle } from './controls';
 import { setUnsplashKey, useUnsplash } from '../page/covers';
 
-type Section = 'general' | 'ai' | 'sharing' | 'devices' | 'data' | 'updates';
+type Section = 'general' | 'ai' | 'cloud' | 'sharing' | 'devices' | 'data' | 'updates';
 
 const SECTIONS: { id: Section; label: string; icon: LucideIcon }[] = [
   { id: 'general', label: 'Allgemein', icon: Settings },
   { id: 'ai', label: 'KI', icon: Sparkles },
+  { id: 'cloud', label: 'Eigene Cloud', icon: Cloud },
   { id: 'sharing', label: 'Teilen', icon: Globe },
   { id: 'devices', label: 'Meine Geräte', icon: Smartphone },
   { id: 'data', label: 'Daten', icon: Database },
@@ -322,6 +324,7 @@ export function SettingsDialog() {
   const content: Record<Section, ReactNode> = {
     general: <General />,
     ai: <AiSettings />,
+    cloud: <CloudSettings />,
     sharing: <Sharing />,
     devices: <Devices />,
     data: <Data />,

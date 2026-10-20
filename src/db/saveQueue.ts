@@ -24,6 +24,17 @@ const MAX_WAIT_MS = 2000;
 const RETRY_MS = 2000;
 
 const pending = new Map<string, Build>();
+const writeListeners = new Set<() => void>();
+
+/** Wird nach jedem erfolgreichen Schreibvorgang aufgerufen (z. B. für den Cloud-Abgleich). */
+export function onWrite(listener: () => void): () => void {
+  writeListeners.add(listener);
+  return () => writeListeners.delete(listener);
+}
+
+const notifyWrite = () => {
+  for (const l of writeListeners) l();
+};
 let timer: ReturnType<typeof setTimeout> | null = null;
 let firstPendingAt = 0;
 let chain: Promise<void> = Promise.resolve();
@@ -66,6 +77,7 @@ export function flush(): Promise<void> {
     try {
       await db().tx(statements);
       useSaveStatus.setState({ status: pending.size ? 'pending' : 'idle', error: null });
+      notifyWrite();
     } catch (err) {
       for (const [key, build] of batch) if (!pending.has(key)) pending.set(key, build);
       useSaveStatus.setState({ status: 'error', error: String(err) });
@@ -79,7 +91,7 @@ export function flush(): Promise<void> {
 /** Sofortiger, geordneter Schreibvorgang. Lehnt ab, wenn die Transaktion fehlschlägt. */
 export function commit(statements: Statement[]): Promise<void> {
   void flush();
-  const result = chain.then(() => db().tx(statements));
+  const result = chain.then(() => db().tx(statements)).then(notifyWrite);
   chain = result.catch(() => undefined);
   return result;
 }

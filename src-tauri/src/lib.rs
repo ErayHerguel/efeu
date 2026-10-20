@@ -134,6 +134,7 @@ pub fn run() {
             paths::ensure_dirs(app.handle())?;
             desk::setup(app)?;
             backup::schedule(app.handle().clone());
+            cloud::dev_autojoin(app.handle());
             // Das Fenster startet unsichtbar und wird vom Frontend nach dem ersten Rendern gezeigt
             // (kein weißes Aufblitzen im Dark Mode). Fallback, falls das Frontend hängt:
             let handle = app.handle().clone();

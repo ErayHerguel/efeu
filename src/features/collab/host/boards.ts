@@ -128,6 +128,27 @@ export class BoardHub {
     if (origin !== 'host') for (const l of entry.listeners) l.files(fresh);
   }
 
+  /** Elemente, die der Cloud-Abgleich schon gespeichert hat: in eine offene Ansicht übernehmen. */
+  external(pageId: string, elements: Element[], files: Record<string, BoardFile>) {
+    void this.entries.get(pageId)?.then((entry) => {
+      const accepted: Element[] = [];
+      for (const element of elements) {
+        if (!newer(element, entry.elements.get(element.id))) continue;
+        entry.elements.set(element.id, element);
+        accepted.push(element);
+      }
+      const fresh = Object.fromEntries(Object.entries(files).filter(([id]) => !entry.files[id]));
+      if (Object.keys(fresh).length) {
+        entry.files = { ...entry.files, ...fresh };
+        for (const l of entry.listeners) l.files(fresh);
+        this.send([...entry.guests], { t: 'board.files', pageId, files: fresh });
+      }
+      if (!accepted.length) return;
+      this.send([...entry.guests], { t: 'board.update', pageId, elements: accepted });
+      for (const l of entry.listeners) l.elements(accepted);
+    }, () => undefined);
+  }
+
   async pointer(pageId: string, origin: number | 'host', p: RemotePointer) {
     const entry = await this.entries.get(pageId)?.catch(() => null);
     if (!entry || (origin !== 'host' && !entry.guests.has(origin))) return;

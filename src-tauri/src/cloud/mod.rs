@@ -342,6 +342,25 @@ fn parse_changed(event: &str) -> Option<u64> {
     (name == "changed").then(|| data.trim().parse().ok()).flatten()
 }
 
+/// Nur für Testversionen (eigene Kennung): mit `EFEU_DEV_CLOUD=adresse|code` beim Start koppeln,
+/// damit sich der Abgleich ohne Klicken prüfen lässt. Die echte App ignoriert die Variable.
+pub fn dev_autojoin(app: &AppHandle) {
+    if app.config().identifier == "app.efeu.desktop" {
+        return;
+    }
+    let Ok(value) = std::env::var("EFEU_DEV_CLOUD") else { return };
+    let Some((url, code)) = value.split_once('|') else { return };
+    let (app, url, code) = (app.clone(), url.to_string(), code.to_string());
+    tauri::async_runtime::block_on(async move {
+        if matches!(connection(&app).await, Ok(Some(_))) {
+            return;
+        }
+        if let Err(e) = cloud_pair(app.clone(), url, code, "Testgerät".into()).await {
+            eprintln!("Test-Kopplung fehlgeschlagen: {e}");
+        }
+    });
+}
+
 /// Name dieses Computers (für die Geräteliste in der Cloud).
 #[tauri::command]
 pub fn device_name() -> String {
