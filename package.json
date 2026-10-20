@@ -18,7 +18,8 @@
     "licenses": "node scripts/check-licenses.mjs",
     "icons": "node scripts/make-icon.mjs && tauri icon src-tauri/icons/source.png -o src-tauri/icons && rm -rf src-tauri/icons/android src-tauri/icons/ios src-tauri/icons/Square*.png src-tauri/icons/StoreLogo.png src-tauri/icons/64x64.png",
     "version:set": "node scripts/set-version.mjs",
-    "build:win": "tauri build --bundles nsis"
+    "build:win": "tauri build --bundles nsis",
+    "build:server": "vite build -c vite.server.config.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",

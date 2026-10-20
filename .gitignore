@@ -5,3 +5,4 @@ dist/
 /scratch/
 /.claude/
 /public/excalidraw/
+dist-server/
