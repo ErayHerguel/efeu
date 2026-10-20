@@ -27,9 +27,11 @@ import {
   Sparkles,
   ListTodo,
   PenLine,
+  Mic,
 } from 'lucide-react';
 import { startWrite } from '../../features/ai/writeSession';
 import { openAiBar } from '../../features/ai/edit/session';
+import { openLectureStart } from '../../features/lecture/LectureUI';
 import { pickAndStoreFile, pickImage } from '../../lib/assets';
 import { columnsContent } from '../nodes/columns';
 import { createBoard } from '../../features/board/create';
@@ -292,6 +294,19 @@ export const SLASH_ITEMS: SlashItem[] = [
     keywords: ['link', 'verweis', 'mention', '[['],
     icon: Link2,
     run: (editor, range) => block(editor, range).insertContent('[[').run(),
+  },
+  {
+    id: 'lecture',
+    title: 'Vorlesung mitschreiben',
+    description: 'Live-Notizen per Mikrofon, Zusammenfassung am Ende',
+    group: 'Seiten',
+    keywords: ['vorlesung', 'aufnahme', 'mitschrift', 'mikrofon', 'meeting', 'transkript', 'lecture'],
+    icon: Mic,
+    hostOnly: true,
+    run: (editor, range, ctx) => {
+      editor.chain().focus().deleteRange(range).run();
+      openLectureStart(ctx.pageId);
+    },
   },
   {
     id: 'ai.bar',

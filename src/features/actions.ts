@@ -19,6 +19,8 @@ import { useSettingsSection } from './ai/client';
 import { startWrite } from './ai/writeSession';
 import { openAiBar, pageToBoard } from './ai/edit/session';
 import { openAsk } from './ai/AskDialog';
+import { openLectureStart } from './lecture/LectureUI';
+import { isRecording, stopLecture } from './lecture/lecture';
 
 export type MenuSection = 'app' | 'file' | 'edit' | 'view' | 'go' | 'help';
 
@@ -459,6 +461,23 @@ export const actions: AppAction[] = [
     group: 'KI',
     when: aiUsable,
     run: () => openAsk('research'),
+  },
+  {
+    id: 'lecture.start',
+    label: 'Vorlesung mitschreiben …',
+    group: 'Seite',
+    when: () => currentPage()?.type === 'page',
+    run: () => {
+      const page = currentPage();
+      if (page) openLectureStart(page.id);
+    },
+  },
+  {
+    id: 'lecture.stop',
+    label: 'Mitschrift beenden',
+    group: 'Seite',
+    when: isRecording,
+    run: () => void stopLecture(),
   },
   {
     id: 'ai.summarize',

@@ -28,6 +28,8 @@ import { AiConfirm } from './features/ai/AiConfirm';
 import { WritePanel } from './features/ai/WritePanel';
 import { AiBar } from './features/ai/edit/AiBar';
 import { CoverPicker } from './features/page/CoverPicker';
+import { LectureUI } from './features/lecture/LectureUI';
+import { isRecording } from './features/lecture/lecture';
 import { hydrateUnsplash } from './features/page/covers';
 import { AskDialog } from './features/ai/AskDialog';
 import { useAi } from './features/ai/store';
@@ -126,7 +128,8 @@ export function App() {
     const appWindow = getCurrentWindow();
     const unlisten = appWindow.onCloseRequested(async (event) => {
       // Solange geteilt wird, läuft flou in der Menüleiste weiter (Gäste und eigene Geräte bleiben verbunden).
-      if (useHosting.getState().live) {
+      // Während einer Mitschrift ebenso: Aufnahme und Erkennung laufen im Hintergrund weiter.
+      if (useHosting.getState().live || isRecording()) {
         event.preventDefault();
         await ensureSaved();
         await appWindow.hide();
@@ -174,6 +177,7 @@ export function App() {
       <WritePanel />
       <AiBar />
       <CoverPicker />
+      <LectureUI />
       <AskDialog />
       <Toasts />
       {/* Hinweise unten rechts, übereinander */}

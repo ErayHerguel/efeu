@@ -3,6 +3,7 @@ mod assets;
 mod backup;
 mod db;
 mod desk;
+mod lecture;
 mod notify;
 mod paths;
 mod share;
@@ -115,6 +116,7 @@ pub fn run() {
         .manage(db::Db::new())
         .manage(ai::Ai::new())
         .manage(unsplash::Unsplash::new())
+        .manage(lecture::Lecture::new())
         .manage(share::Share::new())
         .manage(started)
         .setup(|app| {
@@ -156,6 +158,12 @@ pub fn run() {
             backup::backup_now,
             db::db_tx,
             desk::quick_note_open,
+            desk::tray_recording,
+            lecture::lecture_download,
+            lecture::lecture_pause,
+            lecture::lecture_start,
+            lecture::lecture_status,
+            lecture::lecture_stop,
             paths::app_paths,
             paths::reveal_dir,
             share::open_shared,

@@ -1,7 +1,9 @@
-import { ChevronLeft, ChevronRight, Copy, CopyPlus, History, LayoutTemplate, House, MessageSquare, MoreHorizontal, MoveHorizontal, PanelLeft, Printer, Sparkles, Star, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, CopyPlus, History, LayoutTemplate, House, MessageSquare, MoreHorizontal, MoveHorizontal, Mic, PanelLeft, Printer, Sparkles, Star, Trash2 } from 'lucide-react';
 import { useAiReady } from '../ai/store';
 import { openAiBar } from '../ai/edit/session';
 import { suggestTitle } from '../ai/title';
+import { openLectureStart } from '../lecture/LectureUI';
+import { useLecture } from '../lecture/lecture';
 import { Fragment, useCallback, useState } from 'react';
 import { IconButton } from '../../components/IconButton';
 import { MenuList } from '../../components/MenuList';
@@ -41,6 +43,7 @@ export function TopBar({ pageId }: { pageId: string | null }) {
   const closeMenu = useCallback(() => setMenu(null), []);
   const editable = useCanEdit(pageId);
   const aiReady = useAiReady();
+  const recording = useLecture((s) => s.status !== 'idle' && s.pageId === pageId);
 
   return (
     <header
@@ -82,6 +85,9 @@ export function TopBar({ pageId }: { pageId: string | null }) {
       <div data-tauri-drag-region className="h-full flex-1" />
       {GUEST ? <ConnectionIndicator /> : <SaveIndicator />}
       <PagePresence />
+      {page && !GUEST && editable && page.type === 'page' && (
+        <IconButton icon={Mic} label={recording ? 'Mitschrift läuft' : 'Vorlesung mitschreiben'} onClick={() => openLectureStart(page.id)} />
+      )}
       {page && aiReady && editable && (
         <button
           title={`Mit KI bearbeiten (${formatCombo('Mod+J')})`}

@@ -44,6 +44,30 @@ pub fn open_quick(app: &AppHandle) {
     }
 }
 
+fn tray_menu(app: &AppHandle, recording: bool) -> tauri::Result<Menu<tauri::Wry>> {
+    let quick = MenuItem::with_id(app, "quick", "Schnellnotiz", true, Some("Ctrl+Alt+N"))?;
+    let open = MenuItem::with_id(app, "open", "flou öffnen", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "flou beenden", true, None::<&str>)?;
+    let separator = PredefinedMenuItem::separator(app)?;
+    if recording {
+        let stop = MenuItem::with_id(app, "lecture-stop", "Mitschrift beenden", true, None::<&str>)?;
+        let separator2 = PredefinedMenuItem::separator(app)?;
+        return Menu::with_items(app, &[&stop, &separator2, &quick, &open, &separator, &quit]);
+    }
+    Menu::with_items(app, &[&quick, &open, &separator, &quit])
+}
+
+/// Mitschrift läuft: Hinweis in der Menüleiste (macOS: „● Mitschrift“ neben dem Symbol) und Eintrag zum Beenden.
+#[tauri::command]
+pub fn tray_recording(app: AppHandle, recording: bool) -> Result<(), String> {
+    let Some(tray) = app.tray_by_id("flou") else { return Ok(()) };
+    tray.set_menu(Some(tray_menu(&app, recording).map_err(|e| e.to_string())?)).map_err(|e| e.to_string())?;
+    let _ = tray.set_tooltip(Some(if recording { "flou – Mitschrift läuft" } else { "flou" }));
+    #[cfg(target_os = "macos")]
+    let _ = tray.set_title(if recording { Some("● Mitschrift") } else { None });
+    Ok(())
+}
+
 /// Öffnet die Schnellnotiz aus dem Hauptfenster heraus (Befehlspalette).
 #[tauri::command]
 pub fn quick_note_open(app: AppHandle) {
@@ -66,11 +90,7 @@ pub fn setup(app: &mut App) -> tauri::Result<()> {
         eprintln!("Kürzel für die Schnellnotiz nicht verfügbar: {err}");
     }
 
-    let quick = MenuItem::with_id(app, "quick", "Schnellnotiz", true, Some("Ctrl+Alt+N"))?;
-    let open = MenuItem::with_id(app, "open", "flou öffnen", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "flou beenden", true, None::<&str>)?;
-    let separator = PredefinedMenuItem::separator(app)?;
-    let menu = Menu::with_items(app, &[&quick, &open, &separator, &quit])?;
+    let menu = tray_menu(app.handle(), false)?;
     // macOS: einfarbige Vorlage, die sich der Menüleiste anpasst; Windows: farbiges App-Symbol.
     #[cfg(target_os = "macos")]
     let icon = tauri::include_image!("icons/tray.png");
@@ -85,6 +105,9 @@ pub fn setup(app: &mut App) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id().as_ref() {
             "quick" => open_quick(app),
             "open" => show_main(app),
+            "lecture-stop" => {
+                let _ = app.emit_to("main", "tray:lecture-stop", ());
+            }
             // Beenden über das Hauptfenster, damit vorher alles gespeichert wird.
             "quit" => {
                 show_main(app);

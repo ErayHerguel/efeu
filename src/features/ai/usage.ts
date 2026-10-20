@@ -3,9 +3,10 @@ import { db } from '../../db/driver';
 import { commit } from '../../db/saveQueue';
 import { costOf, type Usage } from './cost';
 
-export type Feature = 'explain' | 'page' | 'database' | 'rewrite' | 'summarize' | 'tasks' | 'continue' | 'board' | 'cluster' | 'ask' | 'research';
+export type Feature = 'lecture' | 'explain' | 'page' | 'database' | 'rewrite' | 'summarize' | 'tasks' | 'continue' | 'board' | 'cluster' | 'ask' | 'research';
 
 export const FEATURE_LABELS: Record<Feature, string> = {
+  lecture: 'Vorlesung',
   explain: 'Erklären',
   page: 'Seite bearbeiten',
   database: 'Datenbank füllen',
