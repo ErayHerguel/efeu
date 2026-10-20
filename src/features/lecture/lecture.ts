@@ -31,6 +31,8 @@ export interface LectureOptions {
   /** Mikrofon (Name), null = Systemmikrofon */
   device: string | null;
   sensitivity: Sensitivity;
+  /** Thema und Fachbegriffe: hilft der Erkennung bei Fachwörtern und Namen */
+  topic: string;
 }
 
 export type Sensitivity = 'low' | 'normal' | 'high';
@@ -68,7 +70,7 @@ const MARKER = 'Zusammenfassung folgt nach der Vorlesung.';
 /** Live-Notizen mit dem günstigsten Modell: eine ganze Vorlesung kostet so etwa 1 Cent. */
 const LIVE_MODEL = 'claude-haiku-5-5' as const;
 
-let options: LectureOptions = { language: 'de', keepTranscript: true, liveNotes: true, slides: null, device: null, sensitivity: 'normal' };
+let options: LectureOptions = { language: 'de', keepTranscript: true, liveNotes: true, slides: null, device: null, sensitivity: 'normal', topic: '' };
 let pendingFrom = 0;
 let notesText = '';
 let writing: Promise<void> = Promise.resolve();
@@ -100,7 +102,7 @@ function maybeWriteNotes(force: boolean): Promise<void> {
   return queue(async () => {
     try {
       if (options.liveNotes && aiUsable() && !overBudget(0.002)) {
-        const result = await run(liveNotesRequest(pending, notesText), LIVE_MODEL);
+        const result = await run(liveNotesRequest(pending, notesText, options.topic), LIVE_MODEL);
         useLecture.setState((s) => ({ cost: s.cost + result.cost }));
         const answer = cleanAnswer(result.text);
         if (answer && answer !== 'LEER') {
@@ -165,7 +167,7 @@ export async function startLecture(pageId: string, opts: LectureOptions): Promis
     ]),
   );
   try {
-    await invoke('lecture_start', { language: opts.language, device: opts.device, sensitivity: opts.sensitivity });
+    await invoke('lecture_start', { language: opts.language, device: opts.device, sensitivity: opts.sensitivity, topic: opts.topic });
     await invoke('tray_recording', { recording: true }).catch(() => undefined);
     useLecture.setState({ status: 'recording' });
   } catch (err) {

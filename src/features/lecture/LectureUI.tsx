@@ -29,7 +29,7 @@ const PREFS_KEY = 'flou.lecture.prefs';
 const HINT_KEY = 'flou.lecture.hintSeen';
 
 function loadPrefs(): Omit<LectureOptions, 'slides'> {
-  const fallback: Omit<LectureOptions, 'slides'> = { language: 'de', keepTranscript: true, liveNotes: true, device: null, sensitivity: 'normal' };
+  const fallback: Omit<LectureOptions, 'slides'> = { language: 'de', keepTranscript: true, liveNotes: true, device: null, sensitivity: 'normal', topic: '' };
   try {
     return { ...fallback, ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') };
   } catch {
@@ -259,6 +259,16 @@ function StartDialog({ pageId }: { pageId: string }) {
                 ? 'Für laute Räume: nur deutliche Sprache, Nebengespräche werden eher ignoriert.'
                 : 'Leise Passagen werden automatisch angehoben.'}
           </p>
+        </div>
+        <div>
+          <div className="mb-1.5 text-xs font-medium text-faint">Thema und Fachbegriffe (optional)</div>
+          <input
+            value={prefs.topic}
+            onChange={(e) => update({ topic: e.target.value })}
+            placeholder="z. B. Thermodynamik: Entropie, Carnot-Prozess, Enthalpie"
+            className="h-8 w-full rounded-md border border-border bg-bg px-2 text-sm outline-none focus:border-border-strong"
+          />
+          <p className="mt-1 text-xs text-faint">Die Erkennung schreibt Fachwörter und Namen damit deutlich öfter richtig.</p>
         </div>
         <div>
           <div className="mb-1.5 text-xs font-medium text-faint">Sprache der Vorlesung</div>

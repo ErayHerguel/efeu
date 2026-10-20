@@ -20,7 +20,7 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 
 const RATE: usize = 16_000;
 /// Länge eines Erkennungsabschnitts; geschnitten wird an der leisesten Stelle davor.
-const CHUNK_SECS: usize = 24;
+const CHUNK_SECS: usize = 28;
 const SEARCH_SECS: usize = 6;
 /// Empfindlichkeit: ab welcher Lautstärke ein Abschnitt als Sprache gilt (darunter: Stille, wird übersprungen,
 /// verhindert Fantasietexte) und wie stark leise Abschnitte vor der Erkennung höchstens verstärkt werden.
@@ -269,7 +269,9 @@ pub fn lecture_monitor(app: AppHandle, state: State<'_, Lecture>, device: Option
 }
 
 #[tauri::command]
-pub fn lecture_start(app: AppHandle, state: State<'_, Lecture>, language: String, device: Option<String>, sensitivity: String) -> Result<(), String> {
+pub fn lecture_start(app: AppHandle, state: State<'_, Lecture>, language: String, device: Option<String>, sensitivity: String, topic: Option<String>) -> Result<(), String> {
+    // Thema als Startkontext für Whisper (kurz halten: Whisper nutzt nur ~200 Tokens Vorlauf)
+    let topic: String = topic.unwrap_or_default().trim().chars().take(300).collect();
     stop_monitor(&state);
     let sens = self::sensitivity(&sensitivity);
     let mut slot = state.session.lock().unwrap();
@@ -304,11 +306,11 @@ pub fn lecture_start(app: AppHandle, state: State<'_, Lecture>, language: String
 
     // Erkennung: lädt das Modell einmal und arbeitet den Puffer abschnittsweise ab.
     let worker = {
-        let (app, stop, buffer) = (app.clone(), stop.clone(), buffer.clone());
+        let (app, stop, buffer, topic) = (app.clone(), stop.clone(), buffer.clone(), topic.clone());
         std::thread::Builder::new()
             .name("flou-whisper".into())
             .spawn(move || {
-                if let Err(message) = worker_loop(&app, &path, language.as_deref(), sens, &stop, &buffer) {
+                if let Err(message) = worker_loop(&app, &path, language.as_deref(), &topic, sens, &stop, &buffer) {
                     stop.store(true, Ordering::SeqCst);
                     emit(&app, LectureEvent::Error { message });
                 }
@@ -502,22 +504,55 @@ fn is_hallucination(text: &str) -> bool {
     trimmed.is_empty() || HALLUCINATIONS.iter().any(|h| lower.contains(h)) || (bare.starts_with('[') && bare.ends_with(']')) || (bare.starts_with('(') && bare.ends_with(')'))
 }
 
-/// Hebt leise Abschnitte auf den Zielpegel an (höchstens `max_gain`, ohne zu übersteuern).
-fn normalize(chunk: &mut [f32], max_gain: f32) {
-    let level = rms(chunk);
-    let peak = chunk.iter().fold(0f32, |m, s| m.max(s.abs()));
-    if level <= 0.0 || peak <= 0.0 {
+/// Bereitet einen Abschnitt für die Erkennung auf:
+/// 1. Hochpass (~100 Hz) gegen Brummen, Trittschall und Lüftung.
+/// 2. Laufende Lautstärkeregelung in 20-ms-Schritten (wie ein Kompressor): leise Sprache wird bis zu
+///    `max_gain` angehoben, laute Stellen (Husten, Stühle) nicht; Rauschen in Sprechpausen nur wenig.
+/// 3. Weicher Begrenzer gegen Übersteuern.
+fn enhance(chunk: &mut [f32], max_gain: f32) {
+    if chunk.is_empty() {
         return;
     }
-    let gain = (TARGET_RMS / level).min(max_gain).min(0.95 / peak).max(1.0);
-    if gain > 1.01 {
-        for s in chunk.iter_mut() {
+    // 1. Hochpass erster Ordnung
+    let alpha = {
+        let rc = 1.0 / (2.0 * std::f32::consts::PI * 100.0);
+        let dt = 1.0 / RATE as f32;
+        rc / (rc + dt)
+    };
+    let (mut prev_in, mut prev_out) = (chunk[0], 0.0f32);
+    for s in chunk.iter_mut() {
+        let out = alpha * (prev_out + *s - prev_in);
+        prev_in = *s;
+        prev_out = out;
+        *s = out;
+    }
+    // 2. Pegel je Fenster, Rauschboden aus den leisesten 15 %
+    let frame = RATE / 50;
+    let levels: Vec<f32> = chunk.chunks(frame).map(rms).collect();
+    let mut sorted = levels.clone();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let noise = sorted[sorted.len() * 15 / 100].max(1e-5);
+    let mut gain = 1.0f32;
+    for (i, block) in chunk.chunks_mut(frame).enumerate() {
+        let level = levels[i].max(1e-6);
+        // Nur deutlich über dem Rauschboden voll verstärken, sonst Rauschen höchstens leicht anheben.
+        let limit = if level > noise * 2.5 { max_gain } else { max_gain.min(2.0) };
+        let wanted = (TARGET_RMS / level).clamp(1.0, limit);
+        // schnell leiser (Attack), langsam lauter (Release): kein Pumpen
+        gain = if wanted < gain { wanted } else { gain + (wanted - gain) * 0.08 };
+        for s in block.iter_mut() {
             *s *= gain;
+        }
+    }
+    // 3. Weicher Begrenzer
+    for s in chunk.iter_mut() {
+        if s.abs() > 0.7 {
+            *s = s.signum() * (0.7 + 0.3 * ((s.abs() - 0.7) / 0.3).tanh());
         }
     }
 }
 
-fn worker_loop(app: &AppHandle, model: &PathBuf, language: Option<&str>, sens: Sensitivity, stop: &AtomicBool, buffer: &Arc<Mutex<Buffer>>) -> Result<(), String> {
+fn worker_loop(app: &AppHandle, model: &PathBuf, language: Option<&str>, topic: &str, sens: Sensitivity, stop: &AtomicBool, buffer: &Arc<Mutex<Buffer>>) -> Result<(), String> {
     whisper_rs::install_logging_hooks();
     let context = WhisperContext::new_with_params(model, WhisperContextParameters::default())
         .map_err(|e| format!("Sprachmodell konnte nicht geladen werden: {e}"))?;
@@ -554,8 +589,13 @@ fn worker_loop(app: &AppHandle, model: &PathBuf, language: Option<&str>, sens: S
             emit(app, LectureEvent::Backlog { seconds: backlog as u32 });
         }
         if rms(&chunk) >= sens.silence_rms {
-            normalize(&mut chunk, sens.max_gain);
-            let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+            enhance(&mut chunk, sens.max_gain);
+            // Auf Apple Silicon (GPU) gründlicher suchen, auf der CPU schnell bleiben.
+            #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+            let strategy = SamplingStrategy::BeamSearch { beam_size: 5, patience: -1.0 };
+            #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+            let strategy = SamplingStrategy::Greedy { best_of: 1 };
+            let mut params = FullParams::new(strategy);
             params.set_language(language);
             params.set_n_threads(threads);
             params.set_print_progress(false);
@@ -564,9 +604,10 @@ fn worker_loop(app: &AppHandle, model: &PathBuf, language: Option<&str>, sens: S
             params.set_print_timestamps(false);
             params.set_suppress_blank(true);
             params.set_no_speech_thold(sens.no_speech);
-            // Die letzten Sätze als Kontext: bessere Rechtschreibung von Fachbegriffen und Namen.
-            if !context_text.is_empty() {
-                params.set_initial_prompt(&context_text);
+            // Thema/Fachbegriffe und die letzten Sätze als Kontext: bessere Rechtschreibung von Fachwörtern und Namen.
+            let prompt = format!("{topic} {context_text}");
+            if !prompt.trim().is_empty() {
+                params.set_initial_prompt(prompt.trim());
             }
             state.full(params, &chunk).map_err(|e| format!("Spracherkennung: {e}"))?;
             for segment in state.as_iter() {
@@ -581,8 +622,8 @@ fn worker_loop(app: &AppHandle, model: &PathBuf, language: Option<&str>, sens: S
                 emit(app, LectureEvent::Segment { text, start_ms, end_ms: end_ms.min(offset_ms + duration_ms) });
             }
             // Kontext kurz halten (Whisper nutzt ohnehin nur die letzten ~200 Tokens).
-            if context_text.len() > 600 {
-                let cut = context_text.len() - 600;
+            if context_text.len() > 400 {
+                let cut = context_text.len() - 400;
                 let boundary = (cut..context_text.len()).find(|&i| context_text.is_char_boundary(i)).unwrap_or(cut);
                 context_text = context_text[boundary..].to_string();
             }
@@ -616,15 +657,33 @@ mod tests {
         assert!(cut >= quiet && cut <= quiet + RATE / 2, "{cut}");
     }
 
+    /// Sprache um 300 Hz, leise, mit Pausen voller Rauschen
+    fn quiet_speech() -> Vec<f32> {
+        (0..RATE * 4)
+            .map(|i| {
+                let t = i as f32 / RATE as f32;
+                let speaking = (t as usize) % 2 == 0;
+                let noise = ((i * 7919) % 101) as f32 / 101.0 - 0.5;
+                (if speaking { (t * 300.0 * std::f32::consts::TAU).sin() * 0.006 } else { 0.0 }) + noise * 0.0004
+            })
+            .collect()
+    }
+
     #[test]
-    fn lifts_quiet_speech_without_clipping() {
-        let mut quiet: Vec<f32> = (0..RATE).map(|i| (i as f32 / 20.0).sin() * 0.005).collect();
-        normalize(&mut quiet, 40.0);
-        let level = rms(&quiet);
-        assert!(level > 0.05 && level < 0.1, "{level}");
-        let mut loud: Vec<f32> = (0..RATE).map(|i| (i as f32 / 20.0).sin() * 0.9).collect();
-        normalize(&mut loud, 40.0);
-        assert!(loud.iter().all(|s| s.abs() <= 0.9001));
+    fn lifts_quiet_speech_but_not_the_noise() {
+        let mut audio = quiet_speech();
+        enhance(&mut audio, 40.0);
+        let speech = rms(&audio[RATE / 4..RATE * 3 / 4]);
+        let pause = rms(&audio[RATE + RATE / 4..RATE + RATE * 3 / 4]);
+        assert!(speech > 0.04, "Sprache zu leise: {speech}");
+        assert!(speech / pause > 20.0, "Rauschen zu stark angehoben: {speech} / {pause}");
+    }
+
+    #[test]
+    fn never_clips() {
+        let mut loud: Vec<f32> = (0..RATE).map(|i| (i as f32 / 20.0).sin() * 1.5).collect();
+        enhance(&mut loud, 40.0);
+        assert!(loud.iter().all(|s| s.abs() <= 1.0));
     }
 
     #[test]

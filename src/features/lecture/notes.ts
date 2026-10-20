@@ -55,7 +55,7 @@ Schreibe nur die Notizen für den neuen Abschnitt, in Markdown:
 - Ist der Abschnitt inhaltsleer (Smalltalk, Technikprobleme, Pause), antworte genau: LEER
 - Sprache: wie die Vorlesung.`;
 
-export function liveNotesRequest(chunk: Segment[], previousNotes: string): AiRequest {
+export function liveNotesRequest(chunk: Segment[], previousNotes: string, topic = ''): AiRequest {
   const text = transcriptText(chunk);
   return {
     feature: 'lecture',
@@ -64,7 +64,7 @@ export function liveNotesRequest(chunk: Segment[], previousNotes: string): AiReq
     messages: [
       {
         role: 'user',
-        content: `<bisherige_notizen>\n${previousNotes.slice(-2_500) || '(noch keine)'}\n</bisherige_notizen>\n\n<neuer_abschnitt>\n${text}\n</neuer_abschnitt>`,
+        content: `${topic.trim() ? `<thema>${topic.trim()}</thema>\n\n` : ''}<bisherige_notizen>\n${previousNotes.slice(-2_500) || '(noch keine)'}\n</bisherige_notizen>\n\n<neuer_abschnitt>\n${text}\n</neuer_abschnitt>`,
       },
     ],
     maxTokens: 2_000,
