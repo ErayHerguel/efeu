@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
 import { FileText, Loader2, Mic, Pause, Play, Square, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -12,7 +13,7 @@ import { useUI } from '../../store/ui';
 import { formatUsd } from '../ai/cost';
 import { useAiReady } from '../ai/store';
 import { clock } from './notes';
-import { downloadModel, liveCostPerHour, modelStatus, pauseLecture, startLecture, stopLecture, useLecture, type Language, type LectureOptions } from './lecture';
+import { downloadModel, liveCostPerHour, modelStatus, pauseLecture, startLecture, stopLecture, useLecture, type Language, type LectureOptions, type Sensitivity } from './lecture';
 
 const useStartDialog = create<{ pageId: string | null }>(() => ({ pageId: null }));
 
@@ -28,12 +29,58 @@ const PREFS_KEY = 'flou.lecture.prefs';
 const HINT_KEY = 'flou.lecture.hintSeen';
 
 function loadPrefs(): Omit<LectureOptions, 'slides'> {
+  const fallback: Omit<LectureOptions, 'slides'> = { language: 'de', keepTranscript: true, liveNotes: true, device: null, sensitivity: 'normal' };
   try {
-    const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}');
-    return { language: p.language ?? 'de', keepTranscript: p.keepTranscript ?? true, liveNotes: p.liveNotes ?? true };
+    return { ...fallback, ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') };
   } catch {
-    return { language: 'de', keepTranscript: true, liveNotes: true };
+    return fallback;
   }
+}
+
+/** Pegel-Test: Mikrofon live anzeigen, mit Hinweis, wenn es den Raum kaum hört. */
+function LevelTest({ device, sensitivity }: { device: string | null; sensitivity: Sensitivity }) {
+  const [level, setLevel] = useState(0);
+  const [peak, setPeak] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    setPeak(0);
+    setError(null);
+    let off: (() => void) | null = null;
+    let alive = true;
+    void listen<{ kind: string; level?: number; message?: string }>('lecture', ({ payload }) => {
+      if (payload.kind === 'level') {
+        const l = payload.level ?? 0;
+        setLevel(l);
+        setPeak((p) => Math.max(p * 0.995, l));
+      } else if (payload.kind === 'error') setError(payload.message ?? 'Mikrofon-Fehler');
+    }).then((u) => {
+      if (alive) off = u;
+      else u();
+    });
+    invoke('lecture_monitor', { device, on: true }).catch((err) => setError(String(err)));
+    return () => {
+      alive = false;
+      off?.();
+      void invoke('lecture_monitor', { device: null, on: false });
+    };
+  }, [device]);
+  const threshold = sensitivity === 'high' ? 0.15 : sensitivity === 'low' ? 0.35 : 0.25;
+  const verdict =
+    error ??
+    (peak < 0.05
+      ? 'Sag etwas oder warte, bis jemand spricht …'
+      : peak < threshold
+        ? 'Eher leise: setz dich näher ran, nimm ein anderes Mikrofon oder stell die Empfindlichkeit auf „Hoch“.'
+        : 'Pegel gut.');
+  return (
+    <div>
+      <div className="relative h-2 overflow-hidden rounded-full bg-hover">
+        <div className="absolute inset-y-0 left-0 rounded-full bg-accent transition-[width] duration-100" style={{ width: `${Math.round(level * 100)}%` }} />
+        <div className="absolute inset-y-0 w-px bg-text/40" style={{ left: `${Math.round(threshold * 100)}%` }} title="Ab hier sicher erkannt" />
+      </div>
+      <p className={cx('mt-1 text-xs', error ? 'text-danger' : 'text-faint')}>{verdict}</p>
+    </div>
+  );
 }
 
 function Choice<T extends string>({ value, options, onChange }: { value: T; options: { id: T; label: string }[]; onChange: (v: T) => void }) {
@@ -80,11 +127,17 @@ function StartDialog({ pageId }: { pageId: string }) {
   });
   const close = () => useStartDialog.setState({ pageId: null });
 
+  const [devices, setDevices] = useState<{ name: string; default: boolean }[]>([]);
   useEffect(() => {
     modelStatus()
       .then(setModel)
       .catch((err) => reportError('Spracherkennung', err));
+    invoke<{ name: string; default: boolean }[]>('lecture_devices')
+      .then(setDevices)
+      .catch(() => setDevices([]));
   }, []);
+  // Gespeichertes Mikrofon gibt es nicht mehr (z. B. Headset abgesteckt): Systemmikrofon nehmen.
+  const device = prefs.device && devices.some((d) => d.name === prefs.device) ? prefs.device : null;
 
   const update = (patch: Partial<typeof prefs>) => {
     const next = { ...prefs, ...patch };
@@ -127,7 +180,7 @@ function StartDialog({ pageId }: { pageId: string }) {
       // egal
     }
     try {
-      await startLecture(pageId, { ...prefs, liveNotes: prefs.liveNotes && aiReady, slides });
+      await startLecture(pageId, { ...prefs, device, liveNotes: prefs.liveNotes && aiReady, slides });
       close();
     } catch (err) {
       reportError('Mitschrift', err);
@@ -170,6 +223,43 @@ function StartDialog({ pageId }: { pageId: string }) {
       )}
 
       <div className="mt-4 space-y-3">
+        <div>
+          <div className="mb-1.5 text-xs font-medium text-faint">Mikrofon</div>
+          <select
+            value={device ?? ''}
+            onChange={(e) => update({ device: e.target.value || null })}
+            className="h-8 w-full rounded-md border border-border bg-bg px-2 text-sm outline-none focus:border-border-strong"
+          >
+            <option value="">Systemmikrofon{devices.find((d) => d.default) ? ` (${devices.find((d) => d.default)!.name})` : ''}</option>
+            {devices
+              .filter((d) => !d.default)
+              .map((d) => (
+                <option key={d.name} value={d.name}>
+                  {d.name}
+                </option>
+              ))}
+          </select>
+          <div className="mt-2">{model?.ready && <LevelTest device={device} sensitivity={prefs.sensitivity} />}</div>
+        </div>
+        <div>
+          <div className="mb-1.5 text-xs font-medium text-faint">Empfindlichkeit</div>
+          <Choice<Sensitivity>
+            value={prefs.sensitivity}
+            onChange={(sensitivity) => update({ sensitivity })}
+            options={[
+              { id: 'low', label: 'Niedrig' },
+              { id: 'normal', label: 'Normal' },
+              { id: 'high', label: 'Hoch' },
+            ]}
+          />
+          <p className="mt-1 text-xs text-faint">
+            {prefs.sensitivity === 'high'
+              ? 'Für leise Sprecher und hintere Reihen: hebt auch sehr leise Sprache an, nimmt etwas mehr Nebengeräusche mit.'
+              : prefs.sensitivity === 'low'
+                ? 'Für laute Räume: nur deutliche Sprache, Nebengespräche werden eher ignoriert.'
+                : 'Leise Passagen werden automatisch angehoben.'}
+          </p>
+        </div>
         <div>
           <div className="mb-1.5 text-xs font-medium text-faint">Sprache der Vorlesung</div>
           <Choice<Language>

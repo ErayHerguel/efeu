@@ -22,8 +22,25 @@ const RATE: usize = 16_000;
 /// Länge eines Erkennungsabschnitts; geschnitten wird an der leisesten Stelle davor.
 const CHUNK_SECS: usize = 24;
 const SEARCH_SECS: usize = 6;
-/// Unterhalb dieser Lautstärke gilt ein Abschnitt als Stille (spart Rechenzeit, verhindert Fantasietexte).
-const SILENCE_RMS: f32 = 0.004;
+/// Empfindlichkeit: ab welcher Lautstärke ein Abschnitt als Sprache gilt (darunter: Stille, wird übersprungen,
+/// verhindert Fantasietexte) und wie stark leise Abschnitte vor der Erkennung höchstens verstärkt werden.
+#[derive(Clone, Copy)]
+struct Sensitivity {
+    silence_rms: f32,
+    max_gain: f32,
+    no_speech: f32,
+}
+
+fn sensitivity(name: &str) -> Sensitivity {
+    match name {
+        "low" => Sensitivity { silence_rms: 0.006, max_gain: 6.0, no_speech: 0.6 },
+        "high" => Sensitivity { silence_rms: 0.0008, max_gain: 40.0, no_speech: 0.75 },
+        _ => Sensitivity { silence_rms: 0.002, max_gain: 16.0, no_speech: 0.65 },
+    }
+}
+
+/// Zielpegel für die Erkennung: Whisper erkennt deutlich besser, wenn leise Sprache angehoben ist.
+const TARGET_RMS: f32 = 0.07;
 
 /// Auf Apple Silicon das große, schnelle Modell (läuft über die GPU), sonst das kleinere.
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
@@ -49,6 +66,8 @@ const HALLUCINATIONS: &[&str] = &[
 #[derive(Default)]
 pub struct Lecture {
     session: Mutex<Option<Session>>,
+    /// Pegel-Test im Startfenster (nur Mikrofon, keine Erkennung)
+    monitor: Mutex<Option<(Arc<AtomicBool>, JoinHandle<()>)>>,
     downloading: AtomicBool,
 }
 
@@ -194,8 +213,65 @@ struct Buffer {
     samples: Vec<f32>,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InputDevice {
+    name: String,
+    default: bool,
+}
+
+/// Verfügbare Mikrofone (das Systemmikrofon zuerst)
 #[tauri::command]
-pub fn lecture_start(app: AppHandle, state: State<'_, Lecture>, language: String) -> Result<(), String> {
+pub fn lecture_devices() -> Vec<InputDevice> {
+    let host = cpal::default_host();
+    let default = host.default_input_device().and_then(|d| d.description().ok()).map(|d| d.name().to_string());
+    let mut list: Vec<InputDevice> = host
+        .input_devices()
+        .map(|devices| {
+            devices
+                .filter_map(|d| d.description().ok().map(|desc| desc.name().to_string()))
+                .map(|name| InputDevice { default: Some(&name) == default.as_ref(), name })
+                .collect()
+        })
+        .unwrap_or_default();
+    list.sort_by_key(|d| !d.default);
+    list.dedup_by(|a, b| a.name == b.name);
+    list
+}
+
+fn stop_monitor(state: &Lecture) {
+    if let Some((stop, handle)) = state.monitor.lock().unwrap().take() {
+        stop.store(true, Ordering::SeqCst);
+        let _ = handle.join();
+    }
+}
+
+/// Pegel-Test: Mikrofon öffnen und nur den Pegel melden (für das Startfenster).
+#[tauri::command]
+pub fn lecture_monitor(app: AppHandle, state: State<'_, Lecture>, device: Option<String>, on: bool) -> Result<(), String> {
+    stop_monitor(&state);
+    if !on || state.session.lock().unwrap().is_some() {
+        return Ok(());
+    }
+    let stop = Arc::new(AtomicBool::new(false));
+    let paused = Arc::new(AtomicBool::new(false));
+    let thread_stop = stop.clone();
+    let handle = std::thread::Builder::new()
+        .name("flou-pegel".into())
+        .spawn(move || {
+            if let Err(message) = capture_loop(&app, device.as_deref(), &thread_stop, &paused, None) {
+                emit(&app, LectureEvent::Error { message });
+            }
+        })
+        .map_err(|e| e.to_string())?;
+    *state.monitor.lock().unwrap() = Some((stop, handle));
+    Ok(())
+}
+
+#[tauri::command]
+pub fn lecture_start(app: AppHandle, state: State<'_, Lecture>, language: String, device: Option<String>, sensitivity: String) -> Result<(), String> {
+    stop_monitor(&state);
+    let sens = self::sensitivity(&sensitivity);
     let mut slot = state.session.lock().unwrap();
     if slot.is_some() {
         return Err("Es läuft bereits eine Mitschrift.".into());
@@ -214,11 +290,11 @@ pub fn lecture_start(app: AppHandle, state: State<'_, Lecture>, language: String
 
     // Aufnahme: der cpal-Stream gehört diesem Thread (er ist nicht Send).
     let capture = {
-        let (app, stop, paused, buffer) = (app.clone(), stop.clone(), paused.clone(), buffer.clone());
+        let (app, stop, paused, buffer, device) = (app.clone(), stop.clone(), paused.clone(), buffer.clone(), device.clone());
         std::thread::Builder::new()
             .name("flou-mikrofon".into())
             .spawn(move || {
-                if let Err(message) = capture_loop(&app, &stop, &paused, &buffer) {
+                if let Err(message) = capture_loop(&app, device.as_deref(), &stop, &paused, Some(&buffer)) {
                     stop.store(true, Ordering::SeqCst);
                     emit(&app, LectureEvent::Error { message });
                 }
@@ -232,7 +308,7 @@ pub fn lecture_start(app: AppHandle, state: State<'_, Lecture>, language: String
         std::thread::Builder::new()
             .name("flou-whisper".into())
             .spawn(move || {
-                if let Err(message) = worker_loop(&app, &path, language.as_deref(), &stop, &buffer) {
+                if let Err(message) = worker_loop(&app, &path, language.as_deref(), sens, &stop, &buffer) {
                     stop.store(true, Ordering::SeqCst);
                     emit(&app, LectureEvent::Error { message });
                 }
@@ -271,10 +347,16 @@ pub async fn lecture_stop(app: AppHandle) -> Result<(), String> {
     .map_err(|e| e.to_string())
 }
 
-fn capture_loop(app: &AppHandle, stop: &AtomicBool, paused: &Arc<AtomicBool>, buffer: &Arc<Mutex<Buffer>>) -> Result<(), String> {
+/// Öffnet das gewählte Mikrofon (oder das Systemmikrofon); ohne `buffer` wird nur der Pegel gemeldet.
+fn capture_loop(app: &AppHandle, device_name: Option<&str>, stop: &AtomicBool, paused: &Arc<AtomicBool>, buffer: Option<&Arc<Mutex<Buffer>>>) -> Result<(), String> {
     let host = cpal::default_host();
-    let device = host
-        .default_input_device()
+    let chosen = device_name.and_then(|wanted| {
+        host.input_devices()
+            .ok()?
+            .find(|d| d.description().map(|desc| desc.name() == wanted).unwrap_or(false))
+    });
+    let device = chosen
+        .or_else(|| host.default_input_device())
         .ok_or("Kein Mikrofon gefunden. Ist eins angeschlossen und in den Systemeinstellungen erlaubt?")?;
     let supported = device.default_input_config().map_err(|e| mic_error(&e.to_string()))?;
     let channels = supported.channels() as usize;
@@ -288,7 +370,7 @@ fn capture_loop(app: &AppHandle, stop: &AtomicBool, paused: &Arc<AtomicBool>, bu
     let mut last_level = Instant::now();
     let app_level = app.clone();
     let paused_cb = paused.clone();
-    let buffer_cb = buffer.clone();
+    let buffer_cb = buffer.cloned();
     let mut process = move |mono: &mut dyn Iterator<Item = f32>| {
         if paused_cb.load(Ordering::Relaxed) {
             return;
@@ -299,10 +381,14 @@ fn capture_loop(app: &AppHandle, stop: &AtomicBool, paused: &Arc<AtomicBool>, bu
             level_count += 1;
             resampler.push(s, &mut out);
         }
-        buffer_cb.lock().unwrap().samples.extend_from_slice(&out);
+        if let Some(buffer) = &buffer_cb {
+            buffer.lock().unwrap().samples.extend_from_slice(&out);
+        }
         if last_level.elapsed() > Duration::from_millis(200) && level_count > 0 {
             let rms = (level_sum / level_count as f32).sqrt();
-            emit(&app_level, LectureEvent::Level { level: (rms * 8.0).min(1.0) });
+            // Wahrnehmungsnah (logarithmisch): leise Sprache soll sichtbar ausschlagen.
+            let db = 20.0 * rms.max(1e-6).log10();
+            emit(&app_level, LectureEvent::Level { level: ((db + 60.0) / 50.0).clamp(0.0, 1.0) });
             level_sum = 0.0;
             level_count = 0;
             last_level = Instant::now();
@@ -416,7 +502,22 @@ fn is_hallucination(text: &str) -> bool {
     trimmed.is_empty() || HALLUCINATIONS.iter().any(|h| lower.contains(h)) || (bare.starts_with('[') && bare.ends_with(']')) || (bare.starts_with('(') && bare.ends_with(')'))
 }
 
-fn worker_loop(app: &AppHandle, model: &PathBuf, language: Option<&str>, stop: &AtomicBool, buffer: &Arc<Mutex<Buffer>>) -> Result<(), String> {
+/// Hebt leise Abschnitte auf den Zielpegel an (höchstens `max_gain`, ohne zu übersteuern).
+fn normalize(chunk: &mut [f32], max_gain: f32) {
+    let level = rms(chunk);
+    let peak = chunk.iter().fold(0f32, |m, s| m.max(s.abs()));
+    if level <= 0.0 || peak <= 0.0 {
+        return;
+    }
+    let gain = (TARGET_RMS / level).min(max_gain).min(0.95 / peak).max(1.0);
+    if gain > 1.01 {
+        for s in chunk.iter_mut() {
+            *s *= gain;
+        }
+    }
+}
+
+fn worker_loop(app: &AppHandle, model: &PathBuf, language: Option<&str>, sens: Sensitivity, stop: &AtomicBool, buffer: &Arc<Mutex<Buffer>>) -> Result<(), String> {
     whisper_rs::install_logging_hooks();
     let context = WhisperContext::new_with_params(model, WhisperContextParameters::default())
         .map_err(|e| format!("Sprachmodell konnte nicht geladen werden: {e}"))?;
@@ -440,7 +541,7 @@ fn worker_loop(app: &AppHandle, model: &PathBuf, language: Option<&str>, stop: &
                 None
             }
         };
-        let Some(chunk) = chunk else {
+        let Some(mut chunk) = chunk else {
             if stopping {
                 return Ok(());
             }
@@ -452,7 +553,8 @@ fn worker_loop(app: &AppHandle, model: &PathBuf, language: Option<&str>, stop: &
         if backlog > CHUNK_SECS * 2 {
             emit(app, LectureEvent::Backlog { seconds: backlog as u32 });
         }
-        if rms(&chunk) >= SILENCE_RMS {
+        if rms(&chunk) >= sens.silence_rms {
+            normalize(&mut chunk, sens.max_gain);
             let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
             params.set_language(language);
             params.set_n_threads(threads);
@@ -461,7 +563,7 @@ fn worker_loop(app: &AppHandle, model: &PathBuf, language: Option<&str>, stop: &
             params.set_print_special(false);
             params.set_print_timestamps(false);
             params.set_suppress_blank(true);
-            params.set_no_speech_thold(0.6);
+            params.set_no_speech_thold(sens.no_speech);
             // Die letzten Sätze als Kontext: bessere Rechtschreibung von Fachbegriffen und Namen.
             if !context_text.is_empty() {
                 params.set_initial_prompt(&context_text);
@@ -469,7 +571,7 @@ fn worker_loop(app: &AppHandle, model: &PathBuf, language: Option<&str>, stop: &
             state.full(params, &chunk).map_err(|e| format!("Spracherkennung: {e}"))?;
             for segment in state.as_iter() {
                 let text = segment.to_str_lossy().map(|t| t.trim().to_string()).unwrap_or_default();
-                if text.is_empty() || is_hallucination(&text) || segment.no_speech_probability() > 0.8 {
+                if text.is_empty() || is_hallucination(&text) || segment.no_speech_probability() > sens.no_speech + 0.15 {
                     continue;
                 }
                 let start_ms = offset_ms + (segment.start_timestamp().max(0) as u64) * 10;
@@ -512,6 +614,17 @@ mod tests {
         }
         let cut = cut_point(&samples);
         assert!(cut >= quiet && cut <= quiet + RATE / 2, "{cut}");
+    }
+
+    #[test]
+    fn lifts_quiet_speech_without_clipping() {
+        let mut quiet: Vec<f32> = (0..RATE).map(|i| (i as f32 / 20.0).sin() * 0.005).collect();
+        normalize(&mut quiet, 40.0);
+        let level = rms(&quiet);
+        assert!(level > 0.05 && level < 0.1, "{level}");
+        let mut loud: Vec<f32> = (0..RATE).map(|i| (i as f32 / 20.0).sin() * 0.9).collect();
+        normalize(&mut loud, 40.0);
+        assert!(loud.iter().all(|s| s.abs() <= 0.9001));
     }
 
     #[test]

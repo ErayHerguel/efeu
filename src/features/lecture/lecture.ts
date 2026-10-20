@@ -28,7 +28,12 @@ export interface LectureOptions {
   liveNotes: boolean;
   /** Folien als PDF für die Zusammenfassung */
   slides: { name: string; data: string } | null;
+  /** Mikrofon (Name), null = Systemmikrofon */
+  device: string | null;
+  sensitivity: Sensitivity;
 }
+
+export type Sensitivity = 'low' | 'normal' | 'high';
 
 interface LectureState {
   status: LectureStatus;
@@ -63,7 +68,7 @@ const MARKER = 'Zusammenfassung folgt nach der Vorlesung.';
 /** Live-Notizen mit dem günstigsten Modell: eine ganze Vorlesung kostet so etwa 1 Cent. */
 const LIVE_MODEL = 'claude-haiku-5-5' as const;
 
-let options: LectureOptions = { language: 'de', keepTranscript: true, liveNotes: true, slides: null };
+let options: LectureOptions = { language: 'de', keepTranscript: true, liveNotes: true, slides: null, device: null, sensitivity: 'normal' };
 let pendingFrom = 0;
 let notesText = '';
 let writing: Promise<void> = Promise.resolve();
@@ -160,7 +165,7 @@ export async function startLecture(pageId: string, opts: LectureOptions): Promis
     ]),
   );
   try {
-    await invoke('lecture_start', { language: opts.language });
+    await invoke('lecture_start', { language: opts.language, device: opts.device, sensitivity: opts.sensitivity });
     await invoke('tray_recording', { recording: true }).catch(() => undefined);
     useLecture.setState({ status: 'recording' });
   } catch (err) {
