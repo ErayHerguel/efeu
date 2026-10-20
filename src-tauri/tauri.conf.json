@@ -96,7 +96,9 @@
     },
     "resources": {
       "../dist-server/efeu-server.mjs": "efeu-server.mjs",
-      "../dist-server/efeu-web.tar.gz": "efeu-web.tar.gz"
+      "../dist-server/efeu-server.mjs.sig": "efeu-server.mjs.sig",
+      "../dist-server/efeu-web.tar.gz": "efeu-web.tar.gz",
+      "../dist-server/efeu-web.tar.gz.sig": "efeu-web.tar.gz.sig"
     }
   },
   "plugins": {

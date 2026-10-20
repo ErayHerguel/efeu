@@ -3,6 +3,7 @@ import { assetPath, assetStream, listAssets, MIME, storeAsset } from './assets';
 import type { Cloud } from './cloud';
 import type { Device, Devices } from './devices';
 import type { Sharing } from './share';
+import { applyUpdate } from './update';
 import type { Store } from './store';
 
 declare const __EFEU_VERSION__: string;
@@ -10,6 +11,7 @@ export const VERSION = typeof __EFEU_VERSION__ === 'string' ? __EFEU_VERSION__ :
 
 const JSON_LIMIT = 32 * 1024 * 1024;
 const ASSET_LIMIT = 200 * 1024 * 1024;
+const UPDATE_LIMIT = 64 * 1024 * 1024;
 
 class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -168,6 +170,26 @@ export function createApp({ store, cloud, devices, sharing }: Context): Server {
         stream.pipe(res);
         return;
       }
+    }
+
+    if (method === 'POST' && path === '/api/admin/update') {
+      // Neue Server-Version aus der App (signiert); danach Neustart durch systemd.
+      const body = JSON.parse((await readBody(req, UPDATE_LIMIT)).toString('utf8')) as Record<string, unknown>;
+      const text = (key: string) => (typeof body[key] === 'string' ? (body[key] as string) : '');
+      try {
+        applyUpdate({
+          server: Buffer.from(text('server'), 'base64'),
+          serverSig: text('serverSig'),
+          web: Buffer.from(text('web'), 'base64'),
+          webSig: text('webSig'),
+        });
+      } catch (err) {
+        throw new HttpError(400, err instanceof Error ? err.message : 'Update fehlgeschlagen');
+      }
+      send(res, 200, { ok: true });
+      console.log('Update eingespielt, Neustart');
+      setTimeout(() => process.exit(0), 300);
+      return;
     }
 
     if (method === 'GET' && path === '/api/devices') return send(res, 200, { devices: devices.list(), me: device.id });
