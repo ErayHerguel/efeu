@@ -161,6 +161,7 @@ pub fn run() {
             cloud::cloud_asset_download,
             cloud::cloud_pair,
             cloud::cloud_forget,
+            cloud::cloud_update_server,
             cloud::cloud_events,
             cloud::setup::cloud_setup,
             cloud::setup::cloud_setup_cancel,

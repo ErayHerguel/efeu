@@ -251,6 +251,45 @@ pub async fn cloud_pair(app: AppHandle, url: String, code: String, name: String)
     store_connection(&app, Connection { url, token, device_id }).await
 }
 
+/// Spielt die Server-Version ein, die diese App mitbringt (Server-Datei und Web-Oberfläche, signiert).
+/// Der Server prüft die Signaturen selbst und startet danach neu.
+#[tauri::command]
+pub async fn cloud_update_server(app: AppHandle) -> Result<(), String> {
+    use base64::Engine;
+    let conn = require(&app).await?;
+    let read = |name: &str| -> Result<Vec<u8>, String> {
+        let path = app
+            .path()
+            .resolve(name, tauri::path::BaseDirectory::Resource)
+            .map_err(|e| e.to_string())?;
+        std::fs::read(path).map_err(|_| format!("{name} fehlt in dieser efeu-Version"))
+    };
+    let (server, server_sig, web, web_sig) =
+        (read("efeu-server.mjs")?, read("efeu-server.mjs.sig")?, read("efeu-web.tar.gz")?, read("efeu-web.tar.gz.sig")?);
+    if server_sig.is_empty() || web_sig.is_empty() {
+        return Err("Diese efeu-Version ist nicht signiert und kann den Server nicht aktualisieren.".into());
+    }
+    let b64 = base64::engine::general_purpose::STANDARD;
+    let body = serde_json::json!({
+        "server": b64.encode(server),
+        "serverSig": String::from_utf8_lossy(&server_sig),
+        "web": b64.encode(web),
+        "webSig": String::from_utf8_lossy(&web_sig),
+    });
+    let response = http_client(Some(Duration::from_secs(300)))?
+        .post(format!("{}/api/admin/update", conn.url))
+        .bearer_auth(&conn.token)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Cloud nicht erreichbar: {e}"))?;
+    let status = response.status();
+    if !status.is_success() {
+        return Err(error_text(status, &response.text().await.unwrap_or_default()));
+    }
+    Ok(())
+}
+
 /// Verbindung vergessen. Die Daten auf diesem Gerät und in der Cloud bleiben erhalten.
 #[tauri::command]
 pub async fn cloud_forget(app: AppHandle, state: State<'_, Cloud>) -> Result<(), String> {

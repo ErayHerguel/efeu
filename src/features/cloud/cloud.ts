@@ -1,9 +1,11 @@
+import { getVersion } from '@tauri-apps/api/app';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { create } from 'zustand';
 import { db } from '../../db/driver';
 import { flush, onWrite } from '../../db/saveQueue';
 import { importImageBlob } from '../../lib/assets';
+import { toast } from '../../store/toast';
 import { useDatabases } from '../../store/databases';
 import { usePages } from '../../store/pages';
 import { SyncClient, type Transport } from '../../sync/client';
@@ -160,6 +162,44 @@ export async function startCloud(): Promise<void> {
   useHosting.setState({ live: true, status: { phase: 'online', url: status.url, localUrl: null, error: null } });
   await invoke('cloud_events');
   await runSync();
+  void updateServerIfOlder();
+}
+
+/** Vergleicht Versionsnummern wie 2.1.0 (Teile als Zahlen). */
+export function olderVersion(a: string, b: string): boolean {
+  const pa = a.split('.').map((n) => Number.parseInt(n, 10) || 0);
+  const pb = b.split('.').map((n) => Number.parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] ?? 0;
+    const y = pb[i] ?? 0;
+    if (x !== y) return x < y;
+  }
+  return false;
+}
+
+/**
+ * Läuft auf dem Server eine ältere Version als diese App, bringt die App ihn auf ihren Stand.
+ * So bleiben App und Server zusammen, ohne dass jemand etwas auf dem Server tun muss.
+ */
+async function updateServerIfOlder() {
+  try {
+    const [{ version: server }, app] = await Promise.all([cloudRequest<{ version: string }>('GET', '/api/me'), getVersion()]);
+    if (!olderVersion(server, app)) return;
+    await invoke('cloud_update_server');
+    toast(`Deine Cloud wird auf efeu ${app} aktualisiert …`);
+    // Der Server startet neu; danach wieder abgleichen.
+    for (let i = 0; i < 30; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const me = await cloudRequest<{ version: string }>('GET', '/api/me').catch(() => null);
+      if (me && !olderVersion(me.version, app)) {
+        toast(`Deine Cloud läuft jetzt mit efeu ${app}.`);
+        scheduleSync(0);
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('Cloud konnte nicht aktualisiert werden', err);
+  }
 }
 
 async function stopSession() {

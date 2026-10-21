@@ -209,10 +209,13 @@ src/                 React-Frontend
   editor/            TipTap-Editor, eigene Blöcke, Slash-Menü, Greifer
   features/          Seitenleiste, Seitenansicht, Datenbanken, Boards, Palette, Export/Import
   features/collab/   Zusammenarbeit: Rechte, Protokoll, Gastgeber-Hub (host/), Gast-Oberfläche (guest/)
+  features/cloud/    Eigene Cloud: Einstellungen, Abgleich im Hintergrund
+  sync/              Abgleich-Kern (Erfassen, Zusammenführen, Client)
+server/              Cloud-Server (Node), Installationsskript, Dockerfile
   lib/               Baumlogik, Fuzzy-Suche, Markdown
 src-tauri/           Rust-Shell
   migrations/        SQL-Migrationen
-  src/               Transaktionen, Bilder, Backups, Export/Import, Freigabe-Server und Tunnel (share/)
+  src/               Transaktionen, Bilder, Backups, Export/Import, Freigabe-Server und Tunnel (share/), Cloud-Verbindung und Einrichtung per SSH (cloud/)
 scripts/             Icon, Installation, Smoke-Test, Lizenzprüfung
 brand/               Logo (SVG)
 ```
@@ -241,6 +244,22 @@ So funktioniert es: Das iPhone nutzt efeu im Browser, eine App aus dem App Store
 
 Damit das iPhone immer verbunden ist: unter **Teilen** „Beim Start von efeu automatisch teilen“ und „Computer wach halten, solange geteilt wird“ einschalten. Ohne laufenden Computer (oder mit zugeklapptem Laptop) zeigt das iPhone „Computer nicht erreichbar“ und verbindet sich von selbst, sobald er wieder da ist.
 
+## Eigene Cloud
+
+Freiwillig: Alle Geräte abgeglichen und Teilen, auch wenn der Computer aus ist, auf einem selbst gemieteten Server. Anleitung für Nutzer mit Bildern der Schritte: [Webseite → Eigene Cloud](website/cloud.html).
+
+1. Kleinen Server mit Ubuntu oder Debian mieten (z. B. Hetzner CX23/CAX11), root-Passwort und öffentliche IPv4.
+2. `⌘,` → **Eigene Cloud** → **Eigenen Server einrichten**, IP-Adresse und Passwort eintragen. efeu meldet sich per SSH an (Passwort wird nicht gespeichert; verlangt der Anbieter ein neues, setzt efeu ein zufälliges und zeigt es einmal an) und führt `server/install.sh` aus: Node.js 24 unter `/opt/efeu/node` (Prüfsumme geprüft), Server-Datei und Web-Oberfläche unter `/opt/efeu`, Daten unter `/var/lib/efeu`, systemd-Dienst `efeu` als eigener Nutzer, Caddy für HTTPS (ohne Domain: kurzlebiges Let's-Encrypt-Zertifikat für die IP-Adresse), automatische Sicherheitsupdates.
+3. Weitere Computer: **Mit bestehender Cloud verbinden** (Adresse + Einmal-Code). Handys: QR-Code, Web-App unter `https://<server>/join/<schlüssel>`.
+
+So funktioniert es:
+
+- Jede Kopie (Computer und Server) hat die vollständige Datenbank. Trigger erfassen lokale Änderungen in `sync_log` (`src/sync/`); hochgeladen wird per HTTP, neue Änderungen meldet der Server über Server-Sent Events.
+- Tabellenzeilen: je Spalte gewinnt der neuere Zeitstempel (hybride Uhr). Seiteninhalte: Yjs-Zustand je Seite, gleichzeitiges Schreiben wird zeichengenau zusammengeführt. Boards: höhere Version je Element. Endgültig Gelöschtes bleibt als Grabstein.
+- Der Server (`server/`, gebaut mit `npm run build:server` zu einer Datei für Node) führt denselben Code wie die App aus, auch den Teilen-Hub: Gäste und Handys arbeiten über ihn live mit. Er sichert die Datenbank täglich (14 Tage) und fasst das Änderungsprotokoll ab 5000 Einträgen zu einem Schnappschuss zusammen.
+- Updates: Ist der Server älter als die App, spielt die App ihre Server-Version ein (`/api/admin/update`). Der Server prüft die Signatur gegen den Release-Schlüssel (`server/verify.ts`), unsignierte Entwicklungs-Builds werden abgewiesen.
+- Docker/NAS: `server/Dockerfile`; Release-Assets `efeu-server.mjs` und `efeu-web.tar.gz`. Umgebungsvariablen `EFEU_DATA`, `EFEU_WEB`, `EFEU_HOST`, `EFEU_PORT`; `node efeu-server.mjs pairing-code` gibt einen Kopplungscode aus.
+
 ## Formeln
 
 Formel-Properties rechnen pro Eintrag, z. B. `prop("Preis") * prop("Menge")` oder `if(prop("Status") == "Erledigt", "✓", "")`. Verfügbar: `+ - * / % ^`, Vergleiche, `&& || !`, sowie `if, concat, length, lower, upper, contains, empty, round, floor, ceil, abs, sqrt, min, max, toNumber, format, today, dateAdd, dateBetween`.
@@ -249,11 +268,11 @@ Formel-Properties rechnen pro Eintrag, z. B. `prop("Preis") * prop("Menge")` ode
 
 - Notarisierung durch Apple (braucht ein kostenpflichtiges Entwicklerkonto)
 - Mehrere Fenster für denselben eigenen Workspace (geteilte Workspaces anderer öffnen sich dagegen in eigenen Fenstern)
-- Eine feste Adresse fürs Teilen (bräuchte ein Konto bei einem Tunnel-Anbieter oder eine eigene Domain)
+- Eine feste Adresse fürs Teilen ohne eigene Cloud (bräuchte ein Konto bei einem Tunnel-Anbieter)
 
 ## Datenschutz und Netzwerk
 
-efeu macht zur Laufzeit keine Netzwerkanfragen außer der Update-Prüfung: Beim Start fragt die App einmal `latest.json` des neuesten GitHub-Releases ab (nur Versionsnummer, keine Nutzerdaten). Abschaltbar über die Befehlspalette („Automatische Update-Suche an/aus“). Nur wenn du ausdrücklich „Teilen starten“ wählst, lädt efeu einmalig cloudflared von GitHub und baut den Tunnel zu Cloudflare auf; beim Beenden des Teilens oder der App wird er geschlossen. Gibt es gekoppelte eigene Geräte, meldet efeu während des Teilens zusätzlich die aktuelle Tunnel-Adresse an ntfy.sh (siehe „efeu auf dem iPhone“). Für die Mitschrift lädt efeu einmalig das Whisper-Sprachmodell von Hugging Face; Ton verlässt den Computer nie, er wird im Arbeitsspeicher erkannt und verworfen. Hinterlegst du einen API-Schlüssel für die KI, sendet efeu nur dann eine Anfrage an api.anthropic.com, wenn du eine KI-Aktion startest; mit ihr gehen genau die Inhalte, die die Aktion braucht (markierter Text, die Seite, die gewählte PDF, bei „Frag efeu“ die passendsten Seiten). Der Schlüssel liegt im Schlüsselbund des Systems, Gäste und verbundene Geräte können die KI nicht nutzen. In der Datenbank landen nur Token-Zahlen und Kosten für die Übersicht. Die Content-Security-Policy erlaubt nur lokale Ressourcen. Externe Bilder in eingefügtem HTML werden nicht übernommen, Schriften sind eingebunden. Links öffnen sich nur auf ausdrücklichen ⌘-Klick im Standardbrowser.
+efeu macht zur Laufzeit keine Netzwerkanfragen außer der Update-Prüfung: Beim Start fragt die App einmal `latest.json` des neuesten GitHub-Releases ab (nur Versionsnummer, keine Nutzerdaten). Abschaltbar über die Befehlspalette („Automatische Update-Suche an/aus“). Nur wenn du ausdrücklich „Teilen starten“ wählst, lädt efeu einmalig cloudflared von GitHub und baut den Tunnel zu Cloudflare auf; beim Beenden des Teilens oder der App wird er geschlossen. Gibt es gekoppelte eigene Geräte, meldet efeu während des Teilens zusätzlich die aktuelle Tunnel-Adresse an ntfy.sh (siehe „efeu auf dem iPhone“). Für die Mitschrift lädt efeu einmalig das Whisper-Sprachmodell von Hugging Face; Ton verlässt den Computer nie, er wird im Arbeitsspeicher erkannt und verworfen. Hinterlegst du einen API-Schlüssel für die KI, sendet efeu nur dann eine Anfrage an api.anthropic.com, wenn du eine KI-Aktion startest; mit ihr gehen genau die Inhalte, die die Aktion braucht (markierter Text, die Seite, die gewählte PDF, bei „Frag efeu“ die passendsten Seiten). Der Schlüssel liegt im Schlüsselbund des Systems, Gäste und verbundene Geräte können die KI nicht nutzen. In der Datenbank landen nur Token-Zahlen und Kosten für die Übersicht. Die Content-Security-Policy erlaubt nur lokale Ressourcen. Externe Bilder in eingefügtem HTML werden nicht übernommen, Schriften sind eingebunden. Links öffnen sich nur auf ausdrücklichen ⌘-Klick im Standardbrowser. Mit eingerichteter eigener Cloud spricht efeu zusätzlich mit deinem Server (Abgleich, Anhänge, Ereignisse); andere Dienste kommen dabei nicht ins Spiel.
 
 ## Lizenzen der Abhängigkeiten
 

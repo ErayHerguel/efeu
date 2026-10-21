@@ -1,5 +1,6 @@
 # Baut efeu bei jedem Versions-Tag (z. B. v1.1.0) für macOS und Windows und veröffentlicht ein GitHub-Release:
-# efeu.dmg (Mac), efeu-setup.exe (Windows), install.sh (Mac-Installation per Terminal).
+# efeu.dmg (Mac), efeu-setup.exe (Windows), install.sh (Mac-Installation per Terminal) und die Dateien
+# für die eigene Cloud (efeu-server.mjs, efeu-web.tar.gz, jeweils mit Signatur).
 name: Release
 
 on:
@@ -44,6 +45,11 @@ jobs:
           BUNDLE=src-tauri/target.noindex/universal-apple-darwin/release/bundle/macos
           cp "$BUNDLE/efeu.app.tar.gz" out/efeu_universal.app.tar.gz
           cp "$BUNDLE/efeu.app.tar.gz.sig" out/efeu_universal.app.tar.gz.sig
+          # Eigene Cloud: Server-Datei und Web-Oberfläche (signiert) für Docker und eigene Installationen
+          for f in efeu-server.mjs efeu-web.tar.gz; do
+            test -s "dist-server/$f.sig" || { echo "Signatur für $f fehlt"; exit 1; }
+            cp "dist-server/$f" "dist-server/$f.sig" out/
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: macos
@@ -99,7 +105,7 @@ jobs:
           sig = lambda name: open(f"out/{name}.sig").read().strip()
           manifest = {
               "version": version,
-              "notes": f"efeu {version}. efeu hieß früher flou: Deine Daten werden beim ersten Start übernommen.",
+              "notes": f"efeu {version}: Eigene Cloud – deine Seiten auf allen Geräten, auf deinem eigenen Server.",
               "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
               "platforms": {
                   # Eine Universal-App für beide Mac-Architekturen
@@ -110,7 +116,7 @@ jobs:
           }
           json.dump(manifest, open("out/latest.json", "w"), indent=2)
           PY
-          rm out/*.sig
+          rm out/efeu_universal.app.tar.gz.sig out/efeu_*_x64-setup.exe.sig
 
       - name: Release veröffentlichen
         env:
@@ -119,8 +125,10 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           gh release create "$GITHUB_REF_NAME" out/* --repo "$GITHUB_REPOSITORY" \
             --title "efeu $VERSION" \
-            --notes "flou heißt jetzt efeu. Wer flou nutzt, bekommt efeu als normales Update; Daten, Schlüssel und Einstellungen werden beim ersten Start übernommen.
+            --notes "**Neu: Eigene Cloud.** Deine Seiten, Boards und Datenbanken auf allen Geräten und zum Teilen, auch wenn dein Computer aus ist. Sie läuft auf einem kleinen Server, den du selbst mietest (z. B. bei Hetzner); efeu richtet ihn unter Einstellungen → Eigene Cloud automatisch ein. Ohne Cloud bleibt efeu wie bisher komplett lokal.
 
           **Mac** (Apple Silicon und Intel, macOS 13+): efeu.dmg laden oder im Terminal \`curl -fsSL https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/install.sh | bash\`
 
-          **Windows** (10/11, 64 Bit): efeu-setup.exe laden und ausführen. Erscheint „Der Computer wurde durch Windows geschützt“: „Weitere Informationen“ → „Trotzdem ausführen“."
+          **Windows** (10/11, 64 Bit): efeu-setup.exe laden und ausführen. Erscheint „Der Computer wurde durch Windows geschützt“: „Weitere Informationen“ → „Trotzdem ausführen“.
+
+          **Für Profis:** efeu-server.mjs und efeu-web.tar.gz (mit Signaturen) laufen auch per Docker oder auf einem NAS, siehe README."

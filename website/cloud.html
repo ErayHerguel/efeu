@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Eigene Cloud einrichten – efeu</title>
+    <meta name="description" content="So richtest du die eigene efeu-Cloud auf einem gemieteten Server ein: Seiten auf allen Geräten und zum Teilen, deine Daten bleiben bei dir." />
+    <link rel="icon" href="assets/favicon.png" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <a class="brand" href="./"><img src="assets/logo.svg" alt="" width="28" height="28" />efeu</a>
+      <nav>
+        <a href="./#funktionen">Funktionen</a>
+        <a href="./#installation">Installation</a>
+        <a href="cloud.html">Eigene Cloud</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <h1>Eigene Cloud</h1>
+        <p class="lead">
+          Deine Seiten, Boards und Datenbanken auf allen Geräten und zum Teilen, auch wenn dein Computer aus ist. Die Cloud läuft auf einem
+          kleinen Server, den du selbst mietest. Deine Daten liegen bei dir, nicht bei efeu oder anderen.
+        </p>
+        <p class="lead-note">Die Cloud ist freiwillig. Ohne sie bleibt efeu wie bisher komplett auf deinem Computer.</p>
+      </section>
+
+      <section>
+        <h2>In vier Schritten</h2>
+        <div class="options">
+          <article>
+            <span class="badge">1</span>
+            <h3>Server mieten</h3>
+            <p>Zum Beispiel bei <a href="https://console.hetzner.cloud">Hetzner</a> (Konto anlegen, dann „Server erstellen“):</p>
+            <ol>
+              <li><strong>Typ:</strong> der kleinste, etwa CX23 oder CAX11 (2 Kerne, 4 GB). Kostet rund 7 € im Monat, stundenweise abgerechnet.</li>
+              <li><strong>Standort:</strong> Nürnberg oder Falkenstein.</li>
+              <li><strong>Image:</strong> Ubuntu (aktuelle Version).</li>
+              <li><strong>Netzwerk:</strong> öffentliche IPv4 anlassen.</li>
+              <li><strong>SSH-Key:</strong> keinen. Dann kommt das root-Passwort per E-Mail.</li>
+            </ol>
+            <p class="hint">Andere Anbieter gehen genauso: Nötig sind Ubuntu oder Debian, root-Zugang mit Passwort und eine öffentliche IPv4-Adresse.</p>
+          </article>
+          <article>
+            <span class="badge">2</span>
+            <h3>In efeu einrichten</h3>
+            <ol>
+              <li>In efeu <kbd>⌘,</kbd> (Windows: <kbd>Strg</kbd>+<kbd>,</kbd>) → <strong>Eigene Cloud</strong> → <strong>Eigenen Server einrichten</strong>.</li>
+              <li>IP-Adresse und Passwort aus der E-Mail eintragen, „Einrichten“ klicken.</li>
+              <li>efeu installiert alles selbst: den efeu-Server, HTTPS, automatische Sicherheitsupdates und tägliche Sicherungen. Das dauert etwa 3 bis 5 Minuten.</li>
+            </ol>
+            <p class="hint">Verlangt der Anbieter beim ersten Anmelden ein neues Passwort, setzt efeu ein sicheres und zeigt es dir einmal an. Das Passwort wird sonst nirgends gespeichert.</p>
+          </article>
+          <article>
+            <span class="badge">3</span>
+            <h3>Handy verbinden</h3>
+            <ol>
+              <li>Eigene Cloud → <strong>Weiteres Gerät verbinden</strong> → <strong>Handy oder Tablet</strong>.</li>
+              <li>QR-Code mit der Kamera scannen, warten, bis deine Seiten erscheinen.</li>
+              <li>In Safari <strong>Teilen</strong> → <strong>„Zum Home-Bildschirm“</strong>. efeu liegt dann wie eine App auf dem Handy.</li>
+            </ol>
+          </article>
+          <article>
+            <span class="badge">4</span>
+            <h3>Weitere Computer und Teilen</h3>
+            <ol>
+              <li>Anderer Computer: efeu installieren, Eigene Cloud → <strong>Mit bestehender Cloud verbinden</strong>, Adresse und Code eintragen.</li>
+              <li>Teilen: auf einer Seite oben rechts „Teilen“, Person einladen, Link schicken. Gäste arbeiten im Browser live mit, auch wenn dein Computer aus ist.</li>
+            </ol>
+          </article>
+        </div>
+      </section>
+
+      <section class="faq">
+        <h2>Fragen zur Cloud</h2>
+        <details>
+          <summary>Brauche ich eine eigene Domain?</summary>
+          <p>Nein. Ohne Domain bekommt die IP-Adresse deines Servers ein echtes HTTPS-Zertifikat von Let's Encrypt, das sich selbst erneuert. Wer eine Domain hat, trägt sie bei der Einrichtung unter „Erweitert“ ein; sie muss vorher auf die IP-Adresse zeigen.</p>
+        </details>
+        <details>
+          <summary>Kann ich offline weiterarbeiten?</summary>
+          <p>Ja. Auf dem Computer arbeitest du wie gewohnt weiter, Änderungen werden übertragen, sobald die Verbindung wieder da ist. Haben zwei Geräte gleichzeitig an derselben Seite geschrieben, führt efeu beides zeichengenau zusammen; bei Boards und Datenbanken zählt je Element bzw. Zelle die neuere Änderung.</p>
+        </details>
+        <details>
+          <summary>Wie bleibt der Server aktuell und sicher?</summary>
+          <p>Ubuntu installiert Sicherheitsupdates automatisch. Den efeu-Server bringt die App beim nächsten Verbinden auf ihren Stand; der Server nimmt nur Updates an, die mit dem Schlüssel der efeu-Releases signiert sind. Jedes Gerät hat einen eigenen Schlüssel und lässt sich in den Einstellungen sofort entfernen.</p>
+        </details>
+        <details>
+          <summary>Und wenn etwas kaputtgeht?</summary>
+          <p>Der Server sichert die Datenbank jeden Tag und behält 14 Tage (Ordner <code>/var/lib/efeu/backups</code>). Außerdem hat jeder verbundene Computer eine vollständige Kopie aller Seiten und macht weiterhin seine eigenen täglichen Backups.</p>
+        </details>
+        <details>
+          <summary>Wer kann meine Daten sehen?</summary>
+          <p>Nur du, deine Geräte und die Personen, denen du Seiten freigibst. Der Server gehört dir; efeu hat keinen eigenen Server und sieht nichts. Wie bei jedem gemieteten Server hat technisch auch der Anbieter Zugriff auf die Hardware.</p>
+        </details>
+        <details>
+          <summary>Geht das auch mit Docker oder auf einem NAS?</summary>
+          <p>Ja. Jedes Release enthält <code>efeu-server.mjs</code> und <code>efeu-web.tar.gz</code>; im Quellcode liegt ein Dockerfile (<code>server/Dockerfile</code>). Der Server braucht Node.js 24, Daten liegen in <code>EFEU_DATA</code>, HTTPS übernimmt ein Proxy davor. Mit <code>node efeu-server.mjs pairing-code</code> bekommst du einen Code, mit dem sich efeu unter „Mit bestehender Cloud verbinden“ anmeldet.</p>
+        </details>
+      </section>
+    </main>
+
+    <footer>
+      <img src="assets/logo.svg" alt="" width="20" height="20" />
+      <span>efeu · kostenlos und lokal</span>
+      <a href="./">Startseite</a>
+    </footer>
+  </body>
+</html>
