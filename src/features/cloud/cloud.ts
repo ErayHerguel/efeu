@@ -22,9 +22,11 @@ interface CloudState {
   deviceId: string | null;
   error: string | null;
   lastSync: number | null;
+  /** Neues root-Passwort, das efeu bei der Einrichtung gesetzt hat (nur bis zum Schließen des Hinweises) */
+  newPassword: string | null;
 }
 
-export const useCloud = create<CloudState>(() => ({ phase: 'off', url: null, deviceId: null, error: null, lastSync: null }));
+export const useCloud = create<CloudState>(() => ({ phase: 'off', url: null, deviceId: null, error: null, lastSync: null, newPassword: null }));
 
 interface Status {
   url: string;
@@ -176,13 +178,14 @@ async function stopSession() {
 /** Server neu einrichten (per SSH) und dieses Gerät verbinden. */
 export async function setupServer(options: { host: string; password: string; domain: string }): Promise<void> {
   const deviceName = await invoke<string>('device_name');
-  await invoke('cloud_setup', {
+  const result = await invoke<{ url: string; newPassword: string | null }>('cloud_setup', {
     host: options.host,
     user: null,
     password: options.password,
     domain: options.domain || null,
     deviceName,
   });
+  useCloud.setState({ newPassword: result.newPassword });
   await startCloud();
 }
 

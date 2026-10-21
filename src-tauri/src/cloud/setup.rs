@@ -40,6 +40,69 @@ impl Handler for Client {
     }
 }
 
+async fn connect(host: &str, user: &str, password: &str) -> Result<client::Handle<Client>, String> {
+    let config = Arc::new(client::Config { inactivity_timeout: Some(Duration::from_secs(600)), ..Default::default() });
+    let addr = if host.contains(':') { format!("[{host}]:22") } else { format!("{host}:22") };
+    let mut session = tokio::time::timeout(Duration::from_secs(20), client::connect(config, addr, Client))
+        .await
+        .map_err(|_| "Der Server antwortet nicht. Stimmt die IP-Adresse?".to_string())?
+        .map_err(friendly_ssh_error)?;
+    let auth = session.authenticate_password(user, password).await.map_err(friendly_ssh_error)?;
+    if !auth.success() {
+        return Err("Anmeldung fehlgeschlagen. Stimmt das Passwort?".into());
+    }
+    Ok(session)
+}
+
+/// 24 Zeichen aus Buchstaben und Ziffern (ohne leicht verwechselbare).
+fn random_password() -> String {
+    const CHARS: &[u8] = b"abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let mut bytes = [0u8; 24];
+    getrandom::fill(&mut bytes).expect("Zufall");
+    bytes.iter().map(|b| CHARS[*b as usize % CHARS.len()] as char).collect()
+}
+
+/// Beantwortet die Abfrage „Passwort abgelaufen“ in einer Terminal-Sitzung: altes, neues, neues.
+async fn change_expired_password(session: &client::Handle<Client>, old: &str, new: &str) -> Result<(), String> {
+    let mut channel = session.channel_open_session().await.map_err(|e| e.to_string())?;
+    channel.request_pty(false, "xterm", 80, 24, 0, 0, &[]).await.map_err(|e| e.to_string())?;
+    channel.request_shell(false).await.map_err(|e| e.to_string())?;
+    let mut screen = String::new();
+    let mut answered = 0;
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(30);
+    loop {
+        let msg = match tokio::time::timeout_at(deadline, channel.wait()).await {
+            Ok(Some(msg)) => msg,
+            Ok(None) => break,
+            Err(_) => return Err("Das neue Server-Passwort ließ sich nicht setzen (keine Antwort).".into()),
+        };
+        let data = match msg {
+            ChannelMsg::Data { data } | ChannelMsg::ExtendedData { data, .. } => data,
+            ChannelMsg::Eof | ChannelMsg::Close | ChannelMsg::ExitStatus { .. } => break,
+            _ => continue,
+        };
+        screen.push_str(&String::from_utf8_lossy(&data).to_lowercase());
+        let prompts = screen.matches("password:").count();
+        if prompts > answered {
+            let answer = if answered == 0 && screen.contains("current") { old } else { new };
+            channel.data(format!("{answer}\n").as_bytes()).await.map_err(|e| e.to_string())?;
+            answered = prompts;
+        }
+        if screen.contains("successfully") || screen.contains("erfolgreich") {
+            let _ = channel.data(&b"exit\n"[..]).await;
+            return Ok(());
+        }
+        if screen.contains("bad password") || screen.contains("failure") || screen.contains("fehler") {
+            return Err("Das neue Server-Passwort wurde abgelehnt.".into());
+        }
+    }
+    if screen.contains("successfully") || screen.contains("erfolgreich") || answered >= 3 {
+        Ok(())
+    } else {
+        Err("Das neue Server-Passwort ließ sich nicht setzen.".into())
+    }
+}
+
 /// Für die Shell sicher in einfache Anführungszeichen setzen.
 fn quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', r"'\''"))
@@ -101,6 +164,8 @@ fn friendly_ssh_error(err: russh::Error) -> String {
 #[serde(rename_all = "camelCase")]
 pub struct SetupResult {
     url: String,
+    /// Neues root-Passwort, falls der Server beim ersten Anmelden eines verlangt hat
+    new_password: Option<String>,
 }
 
 /// Richtet einen frischen Debian-/Ubuntu-Server als efeu Cloud ein und verbindet dieses Gerät.
@@ -145,24 +210,23 @@ pub async fn cloud_setup(
         .map_err(|_| "Die Web-Oberfläche fehlt in dieser efeu-Version.".to_string())?;
 
     progress(&app, 0, "Verbindung zum Server wird aufgebaut");
-    let config = Arc::new(client::Config { inactivity_timeout: Some(Duration::from_secs(600)), ..Default::default() });
-    let addr = if host.contains(':') { format!("[{host}]:22") } else { format!("{host}:22") };
-    let mut session = tokio::time::timeout(Duration::from_secs(20), client::connect(config, addr, Client))
-        .await
-        .map_err(|_| "Der Server antwortet nicht. Stimmt die IP-Adresse?".to_string())?
-        .map_err(friendly_ssh_error)?;
-    let auth = session.authenticate_password(&user, &password).await.map_err(friendly_ssh_error)?;
-    if !auth.success() {
-        return Err("Anmeldung fehlgeschlagen. Stimmt das Passwort?".into());
-    }
+    let mut session = connect(&host, &user, &password).await?;
 
-    // Manche Anbieter verlangen beim ersten Anmelden ein neues Passwort; dann geht nichts automatisch.
+    // Manche Anbieter (z. B. Hetzner) verlangen beim ersten Anmelden ein neues Passwort. Das übernimmt
+    // efeu: Es setzt ein zufälliges, starkes Passwort und zeigt es am Ende einmal an.
+    let mut new_password = None;
     let (probe, _) = run(&session, "echo efeu-ok", &[], |_| {}).await?;
     if !probe.contains("efeu-ok") {
-        return Err(
-            "Der Server verlangt, dass das Passwort zuerst geändert wird. Bitte einmal beim Anbieter in der Konsole anmelden, ein neues Passwort setzen und es hier eintragen."
-                .into(),
-        );
+        progress(&app, 0, "Neues Server-Passwort wird gesetzt");
+        let fresh = random_password();
+        change_expired_password(&session, &password, &fresh).await?;
+        let _ = session.disconnect(russh::Disconnect::ByApplication, "", "de").await;
+        session = connect(&host, &user, &fresh).await?;
+        let (probe, _) = run(&session, "echo efeu-ok", &[], |_| {}).await?;
+        if !probe.contains("efeu-ok") {
+            return Err("Der Server lässt efeu trotz neuem Passwort nicht arbeiten. Bitte einmal beim Anbieter in der Konsole anmelden.".into());
+        }
+        new_password = Some(fresh);
     }
 
     progress(&app, 1, "Server-Datei wird übertragen");
@@ -239,7 +303,7 @@ pub async fn cloud_setup(
     }
     store_connection(&app, Connection { url: url.clone(), token, device_id }).await?;
     progress(&app, TOTAL, "Fertig");
-    Ok(SetupResult { url })
+    Ok(SetupResult { url, new_password })
 }
 
 #[tauri::command]

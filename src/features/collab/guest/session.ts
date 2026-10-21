@@ -62,8 +62,9 @@ function readToken(): string | null {
     } catch {
       // Ohne Speicher gilt die Anmeldung bis zum Schließen.
     }
-    // Den geheimen Teil nicht in der Adresszeile stehen lassen.
-    history.replaceState(null, '', location.pathname);
+    // Der Schlüssel bleibt im Fragment stehen (es geht nie an einen Server): Beim „Zum Home-Bildschirm“
+    // merkt sich das iPhone die aktuelle Adresse, und die Home-Bildschirm-App hat einen eigenen Speicher
+    // ohne den eben gemerkten Schlüssel. Ohne ihn in der Adresse fände sie keinen Zugang.
     return match[1];
   }
   try {

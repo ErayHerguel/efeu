@@ -346,8 +346,22 @@ function Connected() {
   };
 
   const good = phase === 'synced' || phase === 'syncing' || phase === 'connecting';
+  const newPassword = useCloud((s) => s.newPassword);
   return (
     <div className="space-y-6">
+      {newPassword && (
+        <section className="space-y-2 rounded-lg border border-accent p-4 text-sm">
+          <p>
+            Dein Anbieter wollte beim ersten Anmelden ein neues Passwort. efeu hat dafür ein sicheres gesetzt. Für efeu brauchst du es nicht
+            mehr; heb es trotzdem auf (z. B. im Passwort-Manager), falls du dich selbst einmal am Server anmelden willst.
+          </p>
+          <div className="flex items-center gap-1">
+            <code className="rounded bg-code px-1.5 py-0.5 text-xs">{newPassword}</code>
+            <IconButton icon={Copy} label="Passwort kopieren" onClick={() => void writeText(newPassword).then(() => toast('Kopiert'))} />
+          </div>
+          <Button onClick={() => useCloud.setState({ newPassword: null })}>Habe ich gespeichert</Button>
+        </section>
+      )}
       <section className="flex items-start gap-3 rounded-lg border border-border p-4">
         {good ? <Cloud size={20} className="mt-0.5 text-accent" /> : <CloudOff size={20} className="mt-0.5 text-muted" />}
         <div className="min-w-0 flex-1">
