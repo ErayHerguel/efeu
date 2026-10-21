@@ -6,7 +6,10 @@ import { IconButton } from '../../components/IconButton';
 import { confirmDialog } from '../../store/confirm';
 import { reportError, toast } from '../../store/toast';
 import { Button, Heading } from '../settings/controls';
+import { useShallow } from 'zustand/react/shallow';
+import { cx } from '../../lib/cx';
 import { useHosting } from '../collab/host/hosting';
+import { usePresence } from '../collab/presence';
 import { inviteToTeam, listTeam, removeFromTeam, resetTeamPassword, setDisplayName, useCloud, type TeamMember } from './cloud';
 
 const copy = (text: string) => void writeText(text).then(() => toast('Link kopiert'));
@@ -27,7 +30,8 @@ function LinkBox({ link, hint, qr }: { link: string; hint: string; qr?: boolean 
   );
 }
 
-function lastSeen(m: TeamMember): string {
+function lastSeen(m: TeamMember, online: boolean): string {
+  if (online) return 'online';
   if (!m.lastSeen) return 'noch nicht in der App';
   const minutes = Math.round((Date.now() - m.lastSeen) / 60_000);
   if (minutes < 2) return 'gerade aktiv';
@@ -40,6 +44,8 @@ export function TeamSettings() {
   const url = useCloud((s) => s.url);
   const role = useCloud((s) => s.role);
   const hostName = useHosting((s) => s.hostName);
+  // Wer gerade im Browser oder in der App live verbunden ist
+  const online = new Set(usePresence(useShallow((s) => s.people.map((p) => p.memberId ?? ''))));
   const [members, setMembers] = useState<TeamMember[] | null>(null);
   const [invite, setInvite] = useState<string | null>(null);
   const [reset, setReset] = useState<{ name: string; link: string } | null>(null);
@@ -158,7 +164,7 @@ export function TeamSettings() {
                 <span className="min-w-0 flex-1 truncate text-sm">
                   {m.name} <span className="text-faint">@{m.login}</span>
                 </span>
-                <span className="text-xs text-faint">{lastSeen(m)}</span>
+                <span className={cx('text-xs', online.has(m.id) ? 'text-[#30a46c]' : 'text-faint')}>{lastSeen(m, online.has(m.id))}</span>
                 <IconButton icon={KeyRound} label={`Passwort von ${m.name} zurücksetzen`} onClick={() => void createReset(m)} />
                 <IconButton icon={Trash2} label={`${m.name} entfernen`} onClick={() => void remove(m)} />
               </div>
