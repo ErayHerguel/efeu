@@ -10,6 +10,8 @@ import { useUI } from '../../store/ui';
 import { createPageAndOpen, duplicateAndOpen } from '../actions';
 import { GUEST } from '../../lib/mode';
 import { useCanEdit } from '../collab/sources';
+import { usePresence } from '../collab/presence';
+import { useShallow } from 'zustand/react/shallow';
 
 export type DropPosition = 'before' | 'after' | 'inside';
 
@@ -115,6 +117,7 @@ export const TreeRow = memo(function TreeRow({ id, depth, drop, dimmed }: TreeRo
         ) : (
           <span className="min-w-0 flex-1 truncate">{pageTitle(page)}</span>
         )}
+        {!renaming && <Viewers pageId={id} />}
 
         {!renaming && (
           <span className="touch-flex hidden shrink-0 items-center gap-0.5 group-hover:flex" onPointerDown={stop}>
@@ -197,5 +200,18 @@ function RenameInput({ initial, onDone }: { initial: string; onDone: (title: str
       onBlur={() => onDone(value)}
       className="h-6 min-w-0 flex-1 rounded-sm border border-border-strong bg-bg px-1 text-sm text-text outline-none"
     />
+  );
+}
+
+/** Kleine Punkte für die anderen, die gerade auf dieser Seite sind. */
+function Viewers({ pageId }: { pageId: string }) {
+  const people = usePresence(useShallow((s) => s.people.filter((p) => p.pageId === pageId && p.id !== s.me)));
+  if (!people.length) return null;
+  return (
+    <span className="flex shrink-0 -space-x-1 group-hover:hidden" title={people.map((p) => p.name).join(', ')}>
+      {people.slice(0, 3).map((p) => (
+        <span key={p.id} className="h-2 w-2 rounded-full ring-2 ring-sidebar" style={{ background: p.color }} />
+      ))}
+    </span>
   );
 }
