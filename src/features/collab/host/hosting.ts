@@ -78,7 +78,7 @@ export function deviceLink(topic: string, member: Member): string {
 }
 
 /** Mit eigener Cloud: fester Link direkt auf den Server (ohne Startseite und ntfy). */
-export const cloudLink = (url: string, member: Member): string => `${url}/#join=${member.token}`;
+export const cloudLink = (url: string, member: Member): string => `${url}/join/${member.token}`;
 
 const persistSetting = (key: string, value: string) => schedule(`setting:${key}`, () => [setSetting(key, value)]);
 const hasDevice = () => useHosting.getState().members.some((m) => m.kind === 'device');

@@ -40,7 +40,7 @@ export const useGuest = create<GuestState>(() => ({ me: null, host: null }));
 let topic: string | null = null;
 
 function readToken(): string | null {
-  const match = /(?:^#|&)join=([0-9a-f]{64})/.exec(location.hash);
+  const match = /(?:^#|&)join=([0-9a-f]{64})/.exec(location.hash) ?? /^\/join\/([0-9a-f]{64})\/?$/.exec(location.pathname);
   const fromLauncher = /(?:^#|&)topic=([A-Za-z0-9_-]{24,64})/.exec(location.hash);
   if (fromLauncher) {
     topic = fromLauncher[1];
@@ -62,9 +62,10 @@ function readToken(): string | null {
     } catch {
       // Ohne Speicher gilt die Anmeldung bis zum Schließen.
     }
-    // Der Schlüssel bleibt im Fragment stehen (es geht nie an einen Server): Beim „Zum Home-Bildschirm“
-    // merkt sich das iPhone die aktuelle Adresse, und die Home-Bildschirm-App hat einen eigenen Speicher
-    // ohne den eben gemerkten Schlüssel. Ohne ihn in der Adresse fände sie keinen Zugang.
+    // Der Schlüssel muss in der Adresse bleiben: Beim „Zum Home-Bildschirm“ merkt sich das iPhone die
+    // aktuelle Adresse (ohne den Teil hinter #), und die Home-Bildschirm-App hat einen eigenen Speicher.
+    // Deshalb steht er im Pfad; der Server liefert für /join/… die App aus.
+    if (location.pathname !== `/join/${match[1]}`) history.replaceState(null, '', `/join/${match[1]}`);
     return match[1];
   }
   try {
