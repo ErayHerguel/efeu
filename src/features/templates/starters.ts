@@ -138,6 +138,9 @@ export function starterTemplates(parentId: string, now: number): { pages: PageMe
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
+      space: 'private',
+      categoryId: null,
+      updatedBy: null,
     };
     pages.push(page);
     statements.push(insertPage(page));

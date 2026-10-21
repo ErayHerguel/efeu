@@ -60,8 +60,8 @@ class Device {
 const page = (id: string, title: string, parentId: string | null = null) =>
   insertPage({
     id, parentId, type: 'page', title, icon: null, cover: null, fullWidth: false,
-    sortOrder: 0, createdAt: 1, updatedAt: 1, deletedAt: null,
-  } as Parameters<typeof insertPage>[0]);
+    sortOrder: 0, createdAt: 1, updatedAt: 1, deletedAt: null, space: 'private', categoryId: null, updatedBy: null,
+  });
 
 const paragraphs = (...texts: string[]): JSONContent => ({
   type: 'doc',

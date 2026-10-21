@@ -15,6 +15,9 @@ const page = (id: string, parentId: string | null, extra: Partial<PageMeta> = {}
   createdAt: 0,
   updatedAt: 0,
   deletedAt: null,
+  space: 'private',
+  categoryId: null,
+  updatedBy: null,
   ...extra,
 });
 

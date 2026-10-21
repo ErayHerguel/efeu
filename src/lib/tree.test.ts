@@ -14,6 +14,9 @@ const page = (id: string, parentId: string | null, sortOrder = 0, deletedAt: num
   createdAt: 0,
   updatedAt: 0,
   deletedAt,
+  space: 'private',
+  categoryId: null,
+  updatedBy: null,
 });
 
 const map = (...pages: PageMeta[]): PageMap => Object.fromEntries(pages.map((p) => [p.id, p]));

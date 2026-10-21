@@ -9,7 +9,7 @@ export async function freshDatabase(): Promise<Driver & ReturnType<typeof create
   await flush();
   const driver = createTestDriver();
   setDriver(driver);
-  usePages.setState({ pages: {}, children: new Map() });
+  usePages.setState({ pages: {}, children: new Map(), categories: {}, defaultSpace: 'private' });
   useDatabases.setState({ data: {} });
   return driver;
 }

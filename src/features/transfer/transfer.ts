@@ -153,6 +153,9 @@ export async function importEntries(files: InFile[], containerTitle: string | nu
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
+    space: 'private',
+    categoryId: null,
+    updatedBy: null,
   });
 
   const inserts = containerId ? [insertPage(meta(containerId, null, containerTitle!, rootSiblings))] : [];

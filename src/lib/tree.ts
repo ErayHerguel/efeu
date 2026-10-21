@@ -50,6 +50,11 @@ export function ancestorIds(pages: PageMap, id: string): string[] {
   return chain;
 }
 
+/** Oberste Seite über `id` (oder `id` selbst). Ihr Bereich gilt für den ganzen Teilbaum. */
+export function rootOf(pages: PageMap, id: string): string {
+  return ancestorIds(pages, id)[0] ?? id;
+}
+
 export function isSelfOrDescendant(pages: PageMap, ancestorId: string, id: string | null): boolean {
   if (id === null) return false;
   return id === ancestorId || ancestorIds(pages, id).includes(ancestorId);

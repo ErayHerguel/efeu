@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveContent } from '../db/content';
 import { flush } from '../db/saveQueue';
 import { freshDatabase } from '../test/setup';
-import { usePages } from './pages';
+import { groupRoots, usePages } from './pages';
 
 const store = () => usePages.getState();
 const roots = () => store().children.get(null) ?? [];
@@ -114,5 +114,52 @@ describe('Versionsverlauf', () => {
     const rows = await driver.select<{ text: string }>('SELECT text FROM page_versions ORDER BY created_at DESC');
     expect(rows).toHaveLength(50);
     expect(rows[0].text).toBe('v61');
+  });
+});
+
+describe('Bereiche und Kategorien', () => {
+  const rows = () => driver.select<{ id: string; space: string; category_id: string | null; sort_order: number }>(
+    'SELECT id, space, category_id, sort_order FROM pages WHERE parent_id IS NULL ORDER BY space, category_id, sort_order',
+  );
+  it('legt Seiten in Kategorien an und sortiert je Gruppe', async () => {
+    const uni = await store().createCategory('private', 'Uni');
+    const a = await store().create({ title: 'A', categoryId: uni });
+    const b = await store().create({ title: 'B', categoryId: uni, index: 0 });
+    const c = await store().create({ title: 'C' });
+    const { pages, children, categories } = store();
+    expect(groupRoots(pages, children, categories, { space: 'private', categoryId: uni })).toEqual([b, a]);
+    expect(groupRoots(pages, children, categories, { space: 'private', categoryId: null })).toEqual([c]);
+    await store().load();
+    expect(groupRoots(store().pages, store().children, store().categories, { space: 'private', categoryId: uni })).toEqual([b, a]);
+  });
+
+  it('verschiebt Seiten samt Unterseiten zwischen Bereichen und Kategorien', async () => {
+    const team = await store().createCategory('team', 'Projekte');
+    const a = await store().create({ title: 'A' });
+    const child = await store().create({ title: 'Kind', parentId: a });
+    await store().moveToGroup(a, { space: 'team', categoryId: team }, 0);
+    expect(store().pages[a]).toMatchObject({ space: 'team', categoryId: team, parentId: null });
+    expect(store().pages[child].parentId).toBe(a);
+    // Unterseite nach oben ziehen: landet in der Gruppe ihrer bisherigen obersten Seite.
+    await store().move(child, null, 0);
+    expect(store().pages[child]).toMatchObject({ space: 'team', categoryId: team, parentId: null });
+    expect(await rows()).toEqual([
+      { id: child, space: 'team', category_id: team, sort_order: 0 },
+      { id: a, space: 'team', category_id: team, sort_order: 1 },
+    ]);
+  });
+
+  it('nimmt beim Verschieben einer Kategorie ihre Seiten mit und räumt beim Entfernen auf', async () => {
+    const cat = await store().createCategory('private', 'Projekte');
+    const a = await store().create({ title: 'A', categoryId: cat });
+    const loose = await store().create({ title: 'Lose', space: 'team' });
+    await store().moveCategory(cat, 'team', 0);
+    expect(store().categories[cat].space).toBe('team');
+    expect(store().pages[a].space).toBe('team');
+    await store().deleteCategory(cat);
+    expect(store().categories[cat]).toBeUndefined();
+    const { pages, children, categories } = store();
+    expect(groupRoots(pages, children, categories, { space: 'team', categoryId: null })).toEqual([loose, a]);
+    expect(await driver.select('SELECT * FROM categories')).toEqual([]);
   });
 });

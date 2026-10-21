@@ -16,6 +16,9 @@ const page = (id: string, title: string, parentId: string | null = null, extra: 
   createdAt: 0,
   updatedAt: 0,
   deletedAt: null,
+  space: 'private',
+  categoryId: null,
+  updatedBy: null,
   ...extra,
 });
 
