@@ -15,6 +15,8 @@ import { ShareButton } from '../collab/host/ShareButton';
 import { useUI, type Theme } from '../../store/ui';
 import { actionById } from '../actions';
 import { formatCombo } from '../shortcuts/keys';
+import type { Space } from '../../db/pages';
+import { useCloud } from '../cloud/cloud';
 import { PageTree } from './PageTree';
 import { Resizer } from './Resizer';
 
@@ -86,6 +88,7 @@ function SidebarContent({ narrow }: { narrow: boolean }) {
   const newPage = actionById('page.new');
   // Eigener Workspace oder eigenes Gerät: alles erlaubt; Gäste nur innerhalb ihrer Freigaben.
   const fullAccess = useAccess((s) => s.access === null);
+  const sections = useSections();
   const palette = actionById('palette.open');
   const homeId = useUI((s) => s.homeId);
   const favorites = useUI((s) => s.favorites);
@@ -150,11 +153,13 @@ function SidebarContent({ narrow }: { narrow: boolean }) {
         </>
       )}
 
-      <div className="mt-4 mb-1 px-4 text-2xs font-medium tracking-wide text-faint uppercase">
-        {fullAccess ? 'Seiten' : 'Mit dir geteilt'}
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-2">
-        <PageTree />
+      {!sections.headers && (
+        <div className="mt-4 mb-1 px-4 text-2xs font-medium tracking-wide text-faint uppercase">
+          {fullAccess ? 'Seiten' : 'Mit dir geteilt'}
+        </div>
+      )}
+      <div className={cx('min-h-0 flex-1 overflow-y-auto px-2', sections.headers && 'mt-4')}>
+        <PageTree spaces={sections.spaces} headers={sections.headers} />
       </div>
 
       <div className="flex shrink-0 items-center gap-1 border-t border-border px-2 py-2">
@@ -187,6 +192,19 @@ function SidebarContent({ narrow }: { narrow: boolean }) {
       </div>
     </div>
   );
+}
+
+const ALL_SPACES: Space[] = ['team', 'private', 'local'];
+
+/**
+ * Welche Bereiche die Seitenleiste zeigt. Mit eigener Cloud: Team, Privat und „Nur auf diesem Computer“.
+ * Ohne Cloud eine einfache Liste, es sei denn, es liegen schon Seiten in anderen Bereichen.
+ */
+function useSections(): { spaces: Space[]; headers: boolean } {
+  const cloud = useCloud((s) => s.phase !== 'off');
+  const mixed = usePages((s) => Object.values(s.pages).some((p) => p.parentId === null && p.deletedAt === null && p.space !== 'private'));
+  if (GUEST) return { spaces: ALL_SPACES, headers: false };
+  return { spaces: ALL_SPACES, headers: cloud || mixed };
 }
 
 interface SidebarButtonProps {

@@ -25,6 +25,8 @@ interface UIState {
   theme: Theme;
   overlay: Overlay;
   expanded: Record<string, true>;
+  /** Eingeklappte Bereiche und Kategorien der Seitenleiste ('space:team', 'cat:<id>') */
+  collapsed: Record<string, true>;
   /** Startseite: wird beim Start geöffnet */
   homeId: string | null;
   favorites: string[];
@@ -40,6 +42,7 @@ interface UIState {
   setTheme(theme: Theme): void;
   setOverlay(overlay: Overlay): void;
   setExpanded(id: string, open: boolean): void;
+  setCollapsed(key: string, collapsed: boolean): void;
   requestFocus(target: FocusTarget): void;
   setHome(id: string | null): void;
   toggleFavorite(id: string): void;
@@ -84,6 +87,7 @@ export const useUI = create<UIState>((set, get) => ({
   theme: 'system',
   overlay: null,
   expanded: {},
+  collapsed: {},
   homeId: null,
   favorites: [],
   pendingFocus: null,
@@ -95,6 +99,12 @@ export const useUI = create<UIState>((set, get) => ({
       expanded = JSON.parse(settings['ui.expanded'] ?? '{}');
     } catch {
       expanded = {};
+    }
+    let collapsed: Record<string, true> = {};
+    try {
+      collapsed = JSON.parse(settings['ui.collapsed'] ?? '{}');
+    } catch {
+      collapsed = {};
     }
     let favorites: string[] = [];
     try {
@@ -111,6 +121,7 @@ export const useUI = create<UIState>((set, get) => ({
       theme: (['light', 'dark', 'system'] as const).find((t) => t === settings['ui.theme']) ?? 'system',
       currentId: homeId ?? (settings['ui.lastPage'] || null),
       expanded,
+      collapsed,
     });
   },
 
@@ -176,6 +187,14 @@ export const useUI = create<UIState>((set, get) => ({
     else delete expanded[id];
     set({ expanded });
     persist('ui.expanded', JSON.stringify(expanded));
+  },
+
+  setCollapsed(key, collapsed) {
+    const next = { ...get().collapsed };
+    if (collapsed) next[key] = true;
+    else delete next[key];
+    set({ collapsed: next });
+    persist('ui.collapsed', JSON.stringify(next));
   },
 
   requestFocus(target) {

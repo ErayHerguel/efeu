@@ -9,7 +9,7 @@ import { reportError, toast } from '../store/toast';
 import { copyPageMarkdown, printPage } from './share/share';
 import { checkForUpdate, toggleAutoUpdate } from './update/updater';
 import { backupNow, exportCurrentPage, exportWorkspace, importFolder, importMarkdownFiles, importNotion } from './transfer/transfer';
-import { usePages } from '../store/pages';
+import { usePages, type Group } from '../store/pages';
 import { useUI, type Theme } from '../store/ui';
 import { quitApp } from './lifecycle';
 import { GUEST } from '../lib/mode';
@@ -45,8 +45,8 @@ const currentPage = () => {
   return id ? (usePages.getState().pages[id] ?? null) : null;
 };
 
-export async function createPageAndOpen(parentId: string | null): Promise<void> {
-  const id = await usePages.getState().create({ parentId });
+export async function createPageAndOpen(parentId: string | null, group?: Group): Promise<void> {
+  const id = await usePages.getState().create({ parentId, space: group?.space, categoryId: group?.categoryId });
   if (parentId) useUI.getState().setExpanded(parentId, true);
   useUI.getState().open(id);
   useUI.getState().requestFocus('title');
