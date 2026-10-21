@@ -2,12 +2,12 @@ import type { JSONContent } from '@tiptap/core';
 import * as Y from 'yjs';
 import { emptyScene, saveBoard, sceneText, type StoredScene } from '../db/boards';
 import { saveContent } from '../db/content';
-import type { Driver, Statement } from '../db/driver';
+import type { Driver, SqlValue, Statement } from '../db/driver';
 import { docText } from '../editor/text';
 import { collectLinkTargets } from '../lib/doc';
 import { ackedOf, boardChanges, mergeBoard, type Acked } from './boards';
 import { decode, docJson, encode, foldJson, isEmptyUpdate, openDoc, pendingUpdate } from './docs';
-import { applyRowStatements, installCapture, loadTables, seedStatements, type TableInfo } from './tables';
+import { applyRowStatements, forgetStatement, installCapture, loadTables, seedStatements, type TableInfo } from './tables';
 import type { BoardChange, BoardElement, Change, DocChange, RowChange } from './types';
 
 /** Anbindung an geöffnete Editoren und Boards (in der App; auf dem Server ohne). */
@@ -98,9 +98,15 @@ export class Replica {
       if (!log.length) return null;
       const outbox: Outbox = { changes: [], upTo: Number(log[log.length - 1].seq), docs: {}, boards: {} };
       const statements: Statement[] = [];
+      const local = await this.localScope(statements);
       for (const entry of log) {
         if (entry.kind === 'row') {
-          outbox.changes.push({ kind: 'row', tbl: entry.tbl, pk: entry.pk, cols: parse(entry.cols, null), hlc: entry.hlc });
+          const cols = parse<Record<string, SqlValue> | null>(entry.cols, null);
+          // Was „Nur auf diesem Computer“ liegt, verlässt ihn nicht. Löschungen gehen immer raus.
+          if (cols && local.skips(entry.tbl, entry.pk, cols)) continue;
+          outbox.changes.push({ kind: 'row', tbl: entry.tbl, pk: entry.pk, cols, hlc: entry.hlc });
+        } else if (local.pages.has(entry.pk)) {
+          continue;
         } else if (entry.kind === 'doc') {
           const change = await this.collectDoc(entry.pk, statements, outbox);
           if (change) outbox.changes.push(change);
@@ -112,6 +118,69 @@ export class Replica {
       if (statements.length) await this.driver.tx(statements);
       return outbox;
     });
+  }
+
+  /**
+   * Seiten und Kategorien „Nur auf diesem Computer“. Wechselt etwas den Bereich, wird es nachgeliefert
+   * (verlässt „lokal“) bzw. aus der Cloud genommen (kommt nach „lokal“), ohne es hier zu löschen.
+   */
+  private async localScope(statements: Statement[] | null) {
+    const pages = await this.driver.select<{ id: string; parent_id: string | null; space: string }>('SELECT id, parent_id, space FROM pages');
+    const categories = await this.driver.select<{ id: string; space: string }>('SELECT id, space FROM categories');
+    const byId = new Map(pages.map((p) => [p.id, p]));
+    const rootSpace = new Map<string, string>();
+    const spaceOf = (id: string): string => {
+      const known = rootSpace.get(id);
+      if (known) return known;
+      const seen = new Set<string>();
+      let current = byId.get(id);
+      while (current?.parent_id && byId.has(current.parent_id) && !seen.has(current.id)) {
+        seen.add(current.id);
+        current = byId.get(current.parent_id);
+      }
+      const space = current?.space ?? 'private';
+      rootSpace.set(id, space);
+      return space;
+    };
+    const localPages = new Set(pages.filter((p) => spaceOf(p.id) === 'local').map((p) => p.id));
+    const localCats = new Set(categories.filter((c) => c.space === 'local').map((c) => c.id));
+
+    const [prev] = statements ? await this.driver.select<{ value: string }>("SELECT value FROM sync_state WHERE key = 'local'") : [];
+    const before = parse<{ pages: string[]; categories: string[] } | null>(prev?.value, null);
+    if (statements && before) {
+      const was = { pages: new Set(before.pages), categories: new Set(before.categories) };
+      const left = { pages: [...was.pages].filter((id) => byId.has(id) && !localPages.has(id)), categories: [...was.categories].filter((id) => !localCats.has(id) && categories.some((c) => c.id === id)) };
+      if (left.pages.length || left.categories.length) statements.push(...seedStatements(this.tables.size ? this.tables : await loadTables(this.driver), left));
+      // Neu „lokal“: nur die obersten betroffenen Seiten aus der Cloud nehmen, der Rest folgt dort von selbst.
+      for (const id of localPages) {
+        const parent = byId.get(id)?.parent_id;
+        if (!was.pages.has(id) && !(parent && localPages.has(parent) && !was.pages.has(parent))) statements.push(forgetStatement('pages', JSON.stringify([id])));
+      }
+      for (const id of localCats) if (!was.categories.has(id)) statements.push(forgetStatement('categories', JSON.stringify([id])));
+    }
+    statements?.push({
+      sql: "INSERT INTO sync_state (key, value) VALUES ('local', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+      params: [JSON.stringify({ pages: [...localPages], categories: [...localCats] })],
+    });
+
+    const owners = new Map<string, string>();
+    for (const r of await this.driver.select<{ id: string; database_id: string }>(
+      'SELECT id, database_id FROM db_properties UNION ALL SELECT id, database_id FROM db_views',
+    )) owners.set(r.id, r.database_id);
+
+    return {
+      pages: localPages,
+      skips(tbl: string, pk: string, cols: Record<string, SqlValue>): boolean {
+        const key = (JSON.parse(pk) as SqlValue[])[0];
+        if (tbl === 'categories') return localCats.has(String(key));
+        if (tbl === 'pages' || tbl === 'db_values') return localPages.has(String(key));
+        if (tbl === 'db_properties' || tbl === 'db_views') {
+          const database = typeof cols.database_id === 'string' ? cols.database_id : owners.get(String(key));
+          return database !== undefined && localPages.has(database);
+        }
+        return false;
+      },
+    };
   }
 
   private async docState(page: string): Promise<{ doc: Y.Doc; acked: string; open: boolean }> {
@@ -191,6 +260,11 @@ export class Replica {
       if (!this.tables.size) this.tables = await loadTables(this.driver);
       const statements: Statement[] = [{ sql: 'UPDATE sync_clock SET applying = 1' }];
       let latest = 0;
+      // Von außen nie anfassen, was hier „Nur auf diesem Computer“ liegt (auch keine Löschungen).
+      const local = await this.localScope(null);
+      changes = changes.filter((c) =>
+        c.kind === 'row' ? !local.skips(c.tbl, c.pk, c.cols ?? {}) : !local.pages.has(c.page),
+      );
       for (const change of changes) {
         if (change.kind !== 'row') continue;
         const table = this.tables.get(change.tbl);

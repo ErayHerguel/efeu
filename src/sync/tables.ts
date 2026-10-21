@@ -15,6 +15,7 @@ const ROW_TABLES: Record<string, { key?: string[]; exclude?: string[] }> = {
   // Freigaben (Personen und eigene Geräte mit ihren Rechten): mit eigener Cloud teilt der Server.
   share_members: {},
   share_grants: {},
+  categories: {},
 };
 
 /** Seiteninhalt und Boards werden nicht spaltenweise, sondern inhaltlich zusammengeführt. */
@@ -140,28 +141,58 @@ export async function removeCapture(driver: Driver): Promise<void> {
   await driver.tx(existing.map((t) => ({ sql: `DROP TRIGGER ${ident(t.name)}` })));
 }
 
-/** Alle vorhandenen Zeilen als Änderungen vormerken (erstes Hochladen). */
-export function seedStatements(tables: Map<string, TableInfo>): Statement[] {
+/** Spalte, über die eine Zeile zu einer Seite gehört (für Bereiche und Teilabgleich). */
+export const PAGE_COLUMN: Record<string, string> = {
+  pages: 'id',
+  db_values: 'page_id',
+  db_properties: 'database_id',
+  db_views: 'database_id',
+};
+
+/**
+ * Vorhandene Zeilen als Änderungen vormerken: beim ersten Hochladen alles, sonst nur die Seiten `pages`
+ * (z. B. wenn sie „Nur auf diesem Computer“ verlassen) bzw. die Kategorien `categories`.
+ */
+export function seedStatements(tables: Map<string, TableInfo>, subset?: { pages: string[]; categories: string[] }): Statement[] {
   const statements: Statement[] = [{ sql: TICK }];
+  const docFilter = subset ? ' WHERE page_id IN (SELECT value FROM json_each(?))' : '';
+  const docParams = subset ? [JSON.stringify(subset.pages)] : [];
   for (const t of tables.values()) {
     const name = ident(t.name);
+    let where = '';
+    let params: SqlValue[] = [];
+    if (subset) {
+      const column = t.name === 'categories' ? 'id' : PAGE_COLUMN[t.name];
+      if (!column) continue;
+      where = ` WHERE r.${ident(column)} IN (SELECT value FROM json_each(?))`;
+      params = [JSON.stringify(t.name === 'categories' ? subset.categories : subset.pages)];
+    }
     statements.push({
       sql: `INSERT INTO sync_log (kind, tbl, pk, cols, hlc)
             SELECT 'row', '${t.name}', json_array(${t.key.map((k) => `r.${ident(k)}`).join(', ')}),
                    json_object(${t.columns.map((c) => `'${c}', r.${ident(c)}`).join(', ')}),
                    (SELECT ${HLC} FROM sync_clock)
-            FROM ${name} r`,
+            FROM ${name} r${where}`,
+      params,
     });
   }
   statements.push(
     {
       sql: `INSERT INTO sync_meta (tbl, pk, col, hlc) SELECT l.tbl, l.pk, j.key, l.hlc FROM sync_log l, json_each(l.cols) j
-            WHERE l.kind = 'row' AND true ON CONFLICT DO NOTHING`,
+            WHERE l.kind = 'row' AND l.hlc = (SELECT ${HLC} FROM sync_clock) ON CONFLICT DO UPDATE SET hlc = excluded.hlc`,
     },
-    { sql: `INSERT INTO sync_log (kind, tbl, pk, hlc) SELECT 'doc', '${DOC_TABLE}', page_id, (SELECT ${HLC} FROM sync_clock) FROM ${DOC_TABLE}` },
-    { sql: `INSERT INTO sync_log (kind, tbl, pk, hlc) SELECT 'board', '${BOARD_TABLE}', page_id, (SELECT ${HLC} FROM sync_clock) FROM ${BOARD_TABLE}` },
+    { sql: `INSERT INTO sync_log (kind, tbl, pk, hlc) SELECT 'doc', '${DOC_TABLE}', page_id, (SELECT ${HLC} FROM sync_clock) FROM ${DOC_TABLE}${docFilter}`, params: docParams },
+    { sql: `INSERT INTO sync_log (kind, tbl, pk, hlc) SELECT 'board', '${BOARD_TABLE}', page_id, (SELECT ${HLC} FROM sync_clock) FROM ${BOARD_TABLE}${docFilter}`, params: docParams },
   );
   return statements;
+}
+
+/** Löschung einer Zeile vormerken, ohne sie lokal zu löschen (sie verlässt nur die Cloud). */
+export function forgetStatement(tbl: string, pk: string): Statement {
+  return {
+    sql: `INSERT INTO sync_log (kind, tbl, pk, cols, hlc) SELECT 'row', ?, ?, NULL, ${HLC} FROM sync_clock`,
+    params: [tbl, pk],
+  };
 }
 
 // ---------------------------------------------------------------------------------------------

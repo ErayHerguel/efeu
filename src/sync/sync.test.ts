@@ -231,4 +231,40 @@ describe('Abgleich mit der Cloud', () => {
     expect(await elementsOf(b)).toEqual(expected);
     expect(await a.replica.pendingCount()).toBe(0);
   });
+
+  it('lässt „Nur auf diesem Computer“ nie hinaus und liefert nach, wenn eine Seite den Bereich verlässt', async () => {
+    const { cloud, a, b } = setup();
+    await a.ready;
+    const local = (id: string, title: string, parent: string | null = null) => ({
+      sql: "INSERT INTO pages (id, workspace_id, parent_id, type, title, created_at, updated_at, space) VALUES (?, 'default', ?, 'page', ?, 1, 1, 'local')",
+      params: [id, parent, title],
+    });
+    await a.write([local('geheim', 'Geheim'), local('kind', 'Kind', 'geheim'), ...content('kind', paragraphs('nur hier'))]);
+    await a.write([{ sql: "INSERT INTO categories (id, space, name, created_at) VALUES ('lc', 'local', 'Lokal', 1)" }]);
+    await a.sync();
+    await b.sync();
+    expect(await cloud.driver.select("SELECT id FROM pages WHERE id IN ('geheim', 'kind')")).toEqual([]);
+    expect(await cloud.driver.select("SELECT id FROM categories")).toEqual([]);
+    expect(JSON.stringify(cloud.log)).not.toContain('nur hier');
+
+    // Nach „Privat“ verschoben: kommt samt Unterseite und Inhalt in die Cloud.
+    await a.write([{ sql: "UPDATE pages SET space = 'private' WHERE id = 'geheim'" }]);
+    await a.sync();
+    await b.sync();
+    expect(await title(b, 'kind')).toBe('Kind');
+    expect(await textOf(b, 'kind')).toEqual(['nur hier']);
+
+    // Zurück nach „lokal“: verschwindet aus der Cloud und von B, bleibt auf A.
+    await a.write([{ sql: "UPDATE pages SET space = 'local' WHERE id = 'geheim'" }]);
+    await a.sync();
+    await b.sync();
+    expect(await b.query("SELECT id FROM pages WHERE id IN ('geheim', 'kind')")).toEqual([]);
+    expect(await cloud.driver.select("SELECT id FROM pages WHERE id IN ('geheim', 'kind')")).toEqual([]);
+    expect(await title(a, 'kind')).toBe('Kind');
+
+    // Selbst ein Grabstein aus der Cloud (z. B. nach dem Aufräumen) löscht hier nichts.
+    await a.replica.apply([{ kind: 'row', tbl: 'pages', pk: '["geheim"]', cols: null, hlc: '999999999999999-cloud' }]);
+    expect(await title(a, 'geheim')).toBe('Geheim');
+  });
 });
+
