@@ -172,6 +172,8 @@ pub fn run() {
             cloud::cloud_asset_upload,
             cloud::cloud_asset_download,
             cloud::cloud_pair,
+            cloud::cloud_team_join,
+            cloud::cloud_team_login,
             cloud::cloud_forget,
             cloud::cloud_update_server,
             cloud::cloud_events,

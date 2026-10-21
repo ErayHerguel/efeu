@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import { Check, Cloud, CloudOff, Copy, Laptop, Loader2, RefreshCw, Server, Smartphone, Trash2 } from 'lucide-react';
+import { Check, Cloud, CloudOff, Copy, Laptop, Loader2, RefreshCw, Server, Smartphone, Trash2, Users } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { renderSVG } from 'uqr';
 import { IconButton } from '../../components/IconButton';
@@ -15,7 +15,10 @@ import { Button, Heading } from '../settings/controls';
 import {
   disconnectCloud,
   joinCloud,
+  joinTeam,
   listDevices,
+  loginTeam,
+  parseInvite,
   pairingCode,
   removeDevice,
   renameDevice,
@@ -417,10 +420,106 @@ function Connected() {
   );
 }
 
+function TeamJoinForm({ onCancel }: { onCancel: () => void }) {
+  const [account, setAccount] = useState(false);
+  const [link, setLink] = useState('');
+  const [address, setAddress] = useState('');
+  const [name, setName] = useState('');
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      if (account) await loginTeam(address.includes('://') ? address : `https://${address}`, login, password);
+      else await joinTeam(link, { name, login, password });
+      toast('Du bist jetzt im Team.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const ready = account ? address.trim() && login.trim() && password : parseInvite(link) && name.trim() && login.trim() && password.length >= 10;
+  return (
+    <div className="space-y-3 rounded-lg border border-border p-4">
+      <h4 className="text-sm font-medium">{account ? 'Mit Team-Konto anmelden' : 'Einem Team beitreten'}</h4>
+      {account ? (
+        <Input label="Adresse des Teams" value={address} onChange={setAddress} placeholder="49.12.34.56" />
+      ) : (
+        <>
+          <Input label="Einladungslink" value={link} onChange={setLink} placeholder="https://…/team/…" />
+          <Input label="Dein Name" value={name} onChange={setName} placeholder="So sehen dich die anderen" />
+        </>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Input label="Benutzername" value={login} onChange={setLogin} />
+        <Input label="Passwort" value={password} onChange={setPassword} type="password" hint={account ? undefined : 'Mindestens 10 Zeichen'} />
+      </div>
+      <p className="text-xs text-faint">
+        {account
+          ? 'Für ein weiteres Gerät, wenn du schon im Team bist.'
+          : 'Deine bisherigen Seiten bleiben auf diesem Computer („Nur auf diesem Computer“). Ins Team kommt nur, was du selbst dorthin ziehst.'}
+      </p>
+      {error && <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button primary disabled={busy || !ready} onClick={() => void submit()}>
+          {busy ? <Loader2 size={15} className="animate-spin" /> : <Users size={15} />} {account ? 'Anmelden' : 'Beitreten'}
+        </Button>
+        <Button onClick={onCancel}>Abbrechen</Button>
+        <button className="ml-auto text-xs text-faint hover:text-muted" onClick={() => setAccount(!account)}>
+          {account ? 'Ich habe eine Einladung' : 'Ich habe schon ein Konto'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MemberConnected() {
+  const { phase, url, error, lastSync } = useCloud();
+  const leave = async () => {
+    const ok = await confirmDialog({
+      title: 'Team verlassen?',
+      message: 'Die Seiten des Teams verschwinden von diesem Computer. Deine eigenen Seiten bleiben hier. Zurück kommst du nur mit deinem Konto oder einer neuen Einladung.',
+      confirmLabel: 'Verlassen',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await disconnectCloud();
+    } catch (err) {
+      reportError('Verlassen fehlgeschlagen', err);
+    }
+  };
+  const good = phase === 'synced' || phase === 'syncing' || phase === 'connecting';
+  return (
+    <div className="space-y-6">
+      <section className="flex items-start gap-3 rounded-lg border border-border p-4">
+        {good ? <Users size={20} className="mt-0.5 text-accent" /> : <CloudOff size={20} className="mt-0.5 text-muted" />}
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium">Im Team · {PHASE_TEXT[phase]}</div>
+          <div className="truncate text-xs text-faint">{url}</div>
+          {lastSync && <div className="text-xs text-faint">Zuletzt abgeglichen: {new Date(lastSync).toLocaleTimeString('de-DE')}</div>}
+          {error && phase !== 'synced' && <div className="mt-1 text-xs text-danger">{error}</div>}
+        </div>
+        <IconButton icon={RefreshCw} label="Jetzt abgleichen" onClick={syncNow} />
+      </section>
+      <p className="text-sm text-muted">
+        Alles im Bereich <strong className="font-medium text-text">Team</strong> teilst du mit den anderen, auch offline. Was unter „Nur auf diesem
+        Computer“ liegt, bleibt bei dir. Im Browser oder auf dem Handy meldest du dich unter <code className="rounded bg-code px-1 text-xs">{url}/login</code> mit deinem Konto an.
+      </p>
+      <Button onClick={() => void leave()}>Team verlassen</Button>
+    </div>
+  );
+}
+
 export function CloudSettings() {
   const phase = useCloud((s) => s.phase);
-  const [mode, setMode] = useState<'choose' | 'setup' | 'join'>('choose');
-  if (phase !== 'off') return <Connected />;
+  const role = useCloud((s) => s.role);
+  const [mode, setMode] = useState<'choose' | 'setup' | 'join' | 'team'>('choose');
+  if (phase !== 'off') return role === 'member' ? <MemberConnected /> : <Connected />;
   return (
     <div className="space-y-5">
       <p className="text-sm text-muted">
@@ -432,8 +531,10 @@ export function CloudSettings() {
         <SetupWizard onCancel={() => setMode('choose')} />
       ) : mode === 'join' ? (
         <JoinForm onCancel={() => setMode('choose')} />
+      ) : mode === 'team' ? (
+        <TeamJoinForm onCancel={() => setMode('choose')} />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-3">
           <button onClick={() => setMode('setup')} className="rounded-lg border border-border p-4 text-left hover:bg-hover">
             <Server size={20} className="mb-2 text-accent" />
             <div className="text-sm font-medium">Eigenen Server einrichten</div>
@@ -441,8 +542,13 @@ export function CloudSettings() {
           </button>
           <button onClick={() => setMode('join')} className="rounded-lg border border-border p-4 text-left hover:bg-hover">
             <Laptop size={20} className="mb-2 text-accent" />
-            <div className="text-sm font-medium">Mit bestehender Cloud verbinden</div>
-            <div className="mt-1 text-xs text-muted">Du hast schon eine efeu-Cloud auf einem anderen Gerät eingerichtet.</div>
+            <div className="text-sm font-medium">Mit meiner Cloud verbinden</div>
+            <div className="mt-1 text-xs text-muted">Du hast deine Cloud schon auf einem anderen Gerät eingerichtet.</div>
+          </button>
+          <button onClick={() => setMode('team')} className="rounded-lg border border-border p-4 text-left hover:bg-hover">
+            <Users size={20} className="mb-2 text-accent" />
+            <div className="text-sm font-medium">Einem Team beitreten</div>
+            <div className="mt-1 text-xs text-muted">Jemand hat dich mit einem Link in sein Team eingeladen.</div>
           </button>
         </div>
       )}

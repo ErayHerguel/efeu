@@ -1,6 +1,6 @@
 import { getVersion } from '@tauri-apps/api/app';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import { Cloud, Copy, Database, Globe, Monitor, Moon, QrCode, RefreshCw, Settings, Smartphone, Sparkles, Sun, Trash2, X, type LucideIcon } from 'lucide-react';
+import { Cloud, Copy, Database, Users, Globe, Monitor, Moon, QrCode, RefreshCw, Settings, Smartphone, Sparkles, Sun, Trash2, X, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { renderSVG } from 'uqr';
 import { IconButton } from '../../components/IconButton';
@@ -21,21 +21,26 @@ import { formatCombo } from '../shortcuts/keys';
 import { useUpdate } from '../update/updater';
 import { AiSettings } from '../ai/AiSettings';
 import { CloudSettings } from '../cloud/CloudSettings';
+import { TeamSettings } from '../cloud/TeamSettings';
 import { useSettingsSection } from '../ai/client';
 import { Button, Heading, Toggle } from './controls';
 import { setUnsplashKey, useUnsplash } from '../page/covers';
 
-type Section = 'general' | 'ai' | 'cloud' | 'sharing' | 'devices' | 'data' | 'updates';
+type Section = 'general' | 'ai' | 'cloud' | 'team' | 'sharing' | 'devices' | 'data' | 'updates';
 
 const SECTIONS: { id: Section; label: string; icon: LucideIcon }[] = [
   { id: 'general', label: 'Allgemein', icon: Settings },
   { id: 'ai', label: 'KI', icon: Sparkles },
   { id: 'cloud', label: 'Eigene Cloud', icon: Cloud },
+  { id: 'team', label: 'Team', icon: Users },
   { id: 'sharing', label: 'Teilen', icon: Globe },
   { id: 'devices', label: 'Meine Geräte', icon: Smartphone },
   { id: 'data', label: 'Daten', icon: Database },
   { id: 'updates', label: 'Updates', icon: RefreshCw },
 ];
+
+/** Im Team eines anderen: Team verwalten, teilen und eigene Geräte koppeln macht der Inhaber. */
+const MEMBER_HIDDEN: Section[] = ['team', 'sharing', 'devices'];
 
 const THEMES: { id: Theme; label: string; icon: LucideIcon }[] = [
   { id: 'system', label: 'System', icon: Monitor },
@@ -322,11 +327,13 @@ export function SettingsDialog() {
     useSettingsSection.setState({ section: null });
     return SECTIONS.some((s) => s.id === wanted) ? (wanted as Section) : 'general';
   });
+  const role = useCloud((s) => s.role);
   const close = () => useUI.getState().setOverlay(null);
   const content: Record<Section, ReactNode> = {
     general: <General />,
     ai: <AiSettings />,
     cloud: <CloudSettings />,
+    team: <TeamSettings />,
     sharing: <Sharing />,
     devices: <Devices />,
     data: <Data />,
@@ -336,7 +343,7 @@ export function SettingsDialog() {
     <Modal onClose={close} position="center" className="flex h-[min(600px,85vh)] w-[760px] max-w-full">
       <nav className="flex w-[190px] shrink-0 flex-col gap-0.5 border-r border-border bg-sidebar p-2">
         <div className="px-2 pt-1 pb-2 text-sm font-semibold">Einstellungen</div>
-        {SECTIONS.map(({ id, label, icon: Icon }) => (
+        {SECTIONS.filter(({ id }) => role !== 'member' || !MEMBER_HIDDEN.includes(id)).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setSection(id)}

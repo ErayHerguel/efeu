@@ -89,6 +89,7 @@ function SidebarContent({ narrow }: { narrow: boolean }) {
   // Eigener Workspace oder eigenes Gerät: alles erlaubt; Gäste nur innerhalb ihrer Freigaben.
   const fullAccess = useAccess((s) => s.access === null);
   const sections = useSections();
+  const member = useCloud((s) => s.role === 'member');
   const palette = actionById('palette.open');
   const homeId = useUI((s) => s.homeId);
   const favorites = useUI((s) => s.favorites);
@@ -170,7 +171,7 @@ function SidebarContent({ narrow }: { narrow: boolean }) {
             <SidebarButton icon={Trash2} onClick={() => useUI.getState().setOverlay('trash')} className="flex-1">
               Papierkorb
             </SidebarButton>
-            <ShareButton />
+            {!member && <ShareButton />}
           </>
         )}
         {GUEST ? (
@@ -195,6 +196,7 @@ function SidebarContent({ narrow }: { narrow: boolean }) {
 }
 
 const ALL_SPACES: Space[] = ['team', 'private', 'local'];
+const MEMBER_SPACES: Space[] = ['team', 'local'];
 
 /**
  * Welche Bereiche die Seitenleiste zeigt. Mit eigener Cloud: Team, Privat und „Nur auf diesem Computer“.
@@ -202,8 +204,11 @@ const ALL_SPACES: Space[] = ['team', 'private', 'local'];
  */
 function useSections(): { spaces: Space[]; headers: boolean } {
   const cloud = useCloud((s) => s.phase !== 'off');
+  const member = useCloud((s) => s.role === 'member');
   const mixed = usePages((s) => Object.values(s.pages).some((p) => p.parentId === null && p.deletedAt === null && p.space !== 'private'));
   if (GUEST) return { spaces: ALL_SPACES, headers: false };
+  // Im Team eines anderen gibt es keinen privaten Bereich auf dessen Server.
+  if (member) return { spaces: MEMBER_SPACES, headers: true };
   return { spaces: ALL_SPACES, headers: cloud || mixed };
 }
 

@@ -26,6 +26,9 @@ pub struct Connection {
     pub url: String,
     pub token: String,
     pub device_id: String,
+    /// Team-Mitglied, als das dieses Gerät verbunden ist; None = eigene Cloud (Inhaber)
+    #[serde(default)]
+    pub member_id: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -33,6 +36,7 @@ pub struct Connection {
 pub struct Status {
     url: String,
     device_id: String,
+    member_id: Option<String>,
 }
 
 pub struct Cloud {
@@ -133,7 +137,7 @@ fn valid_path(path: &str) -> bool {
 
 #[tauri::command]
 pub async fn cloud_status(app: AppHandle) -> Result<Option<Status>, String> {
-    Ok(connection(&app).await?.map(|c| Status { url: c.url, device_id: c.device_id }))
+    Ok(connection(&app).await?.map(|c| Status { url: c.url, device_id: c.device_id, member_id: c.member_id }))
 }
 
 /// JSON-Anfrage an die verbundene Cloud.
@@ -248,7 +252,41 @@ pub async fn cloud_pair(app: AppHandle, url: String, code: String, name: String)
     let value: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
     let token = value["token"].as_str().ok_or("Antwort ohne Schlüssel")?.to_string();
     let device_id = value["device"]["id"].as_str().ok_or("Antwort ohne Gerät")?.to_string();
-    store_connection(&app, Connection { url, token, device_id }).await
+    store_connection(&app, Connection { url, token, device_id, member_id: None }).await
+}
+
+/// Einem Team beitreten (Einladungslink) oder sich mit einem Team-Konto anmelden.
+async fn team_access(app: &AppHandle, url: &str, path: &str, body: Value) -> Result<(), String> {
+    let url = normalize_url(url)?;
+    let response = http_client(Some(Duration::from_secs(30)))?
+        .post(format!("{url}{path}"))
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Cloud nicht erreichbar: {e}"))?;
+    let status = response.status();
+    let text = response.text().await.map_err(|e| e.to_string())?;
+    if !status.is_success() {
+        let message = serde_json::from_str::<Value>(&text).ok().and_then(|v| v["error"].as_str().map(str::to_string));
+        return Err(message.unwrap_or_else(|| format!("Die Cloud antwortet mit Fehler {}", status.as_u16())));
+    }
+    let value: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+    let token = value["deviceToken"].as_str().ok_or("Antwort ohne Geräteschlüssel")?.to_string();
+    let device_id = value["deviceId"].as_str().ok_or("Antwort ohne Gerät")?.to_string();
+    let member_id = value["memberId"].as_str().map(str::to_string);
+    store_connection(app, Connection { url, token, device_id, member_id }).await
+}
+
+#[tauri::command]
+pub async fn cloud_team_join(app: AppHandle, url: String, code: String, name: String, login: String, password: String, device: String) -> Result<(), String> {
+    let body = serde_json::json!({ "code": code.trim(), "name": name, "login": login, "password": password, "device": device });
+    team_access(&app, &url, "/api/team/join", body).await
+}
+
+#[tauri::command]
+pub async fn cloud_team_login(app: AppHandle, url: String, login: String, password: String, device: String) -> Result<(), String> {
+    let body = serde_json::json!({ "login": login, "password": password, "device": device });
+    team_access(&app, &url, "/api/team/login", body).await
 }
 
 /// Spielt die Server-Version ein, die diese App mitbringt (Server-Datei und Web-Oberfläche, signiert).

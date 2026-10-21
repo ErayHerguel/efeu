@@ -301,7 +301,7 @@ pub async fn cloud_setup(
                 .into(),
         );
     }
-    store_connection(&app, Connection { url: url.clone(), token, device_id }).await?;
+    store_connection(&app, Connection { url: url.clone(), token, device_id, member_id: None }).await?;
     progress(&app, TOTAL, "Fertig");
     Ok(SetupResult { url, new_password })
 }

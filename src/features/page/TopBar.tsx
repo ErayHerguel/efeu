@@ -15,6 +15,7 @@ import { IS_MAC } from '../../lib/platform';
 import { useNarrow } from '../../lib/useNarrow';
 import { ConnectionIndicator } from '../collab/guest/GuestIdentity';
 import { CloudIndicator } from '../cloud/CloudSettings';
+import { useCloud } from '../cloud/cloud';
 import { PageShareButton } from '../collab/host/PageShare';
 import { PagePresence } from '../collab/presence';
 import { useCanEdit } from '../collab/sources';
@@ -29,6 +30,7 @@ import { formatCombo } from '../shortcuts/keys';
 const TRAFFIC_LIGHT_INSET = 84;
 
 export function TopBar({ pageId }: { pageId: string | null }) {
+  const member = useCloud((s) => s.role === 'member');
   const sidebarOpen = useUI((s) => s.sidebarOpen);
   const narrow = useNarrow();
   const canBack = useUI((s) => s.back.length > 0);
@@ -99,7 +101,7 @@ export function TopBar({ pageId }: { pageId: string | null }) {
           <Sparkles size={15} /> KI
         </button>
       )}
-      {page && !GUEST && <PageShareButton pageId={page.id} />}
+      {page && !GUEST && !member && <PageShareButton pageId={page.id} />}
       {page && (
         <button
           aria-label={favorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}

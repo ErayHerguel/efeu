@@ -26,13 +26,24 @@ interface CloudState {
   lastSync: number | null;
   /** Neues root-Passwort, das efeu bei der Einrichtung gesetzt hat (nur bis zum Schließen des Hinweises) */
   newPassword: string | null;
+  /** Eigene Cloud (Inhaber) oder als Mitglied im Team eines anderen */
+  role: 'owner' | 'member' | null;
 }
 
-export const useCloud = create<CloudState>(() => ({ phase: 'off', url: null, deviceId: null, error: null, lastSync: null, newPassword: null }));
+export const useCloud = create<CloudState>(() => ({
+  phase: 'off',
+  url: null,
+  deviceId: null,
+  error: null,
+  lastSync: null,
+  newPassword: null,
+  role: null,
+}));
 
 interface Status {
   url: string;
   deviceId: string;
+  memberId: string | null;
 }
 
 export interface CloudDevice {
@@ -130,7 +141,10 @@ export async function startCloud(): Promise<void> {
   if (session) return;
   const status = await invoke<Status | null>('cloud_status').catch(() => null);
   if (!status) return;
-  useCloud.setState({ phase: 'connecting', url: status.url, deviceId: status.deviceId, error: null });
+  const member = Boolean(status.memberId);
+  useCloud.setState({ phase: 'connecting', url: status.url, deviceId: status.deviceId, error: null, role: member ? 'member' : 'owner' });
+  // Mitglieder legen neue Seiten im Team an, der Inhaber privat.
+  usePages.setState({ defaultSpace: member ? 'team' : 'private' });
 
   let docs: DocHub | null = null;
   let boards: BoardHub | null = null;
@@ -138,6 +152,15 @@ export async function startCloud(): Promise<void> {
     openDoc: (page) => docs?.peek(page),
     boardMerged: (page, elements, files) => boards?.external(page, elements, files),
   });
+  if (member && !(await replica.device())) {
+    // Erstes Verbinden mit einem fremden Team: Was schon auf diesem Computer liegt, bleibt hier und geht
+    // nicht auf den Server des anderen. Wer etwas teilen will, zieht es selbst in den Team-Bereich.
+    await db().tx([
+      { sql: "UPDATE pages SET space = 'local' WHERE parent_id IS NULL" },
+      { sql: "UPDATE categories SET space = 'local'" },
+    ]);
+    await usePages.getState().load();
+  }
   await replica.enable(status.deviceId);
   docs = new DocHub(() => undefined, (page) => replica.loadDoc(page));
   boards = new BoardHub(() => undefined);
@@ -159,10 +182,10 @@ export async function startCloud(): Promise<void> {
   };
   installSources(docs, boards);
   // Teilen läuft jetzt über den Server: Einladungslinks zeigen auf ihn, und er ist immer erreichbar.
-  useHosting.setState({ live: true, status: { phase: 'online', url: status.url, localUrl: null, error: null } });
+  if (!member) useHosting.setState({ live: true, status: { phase: 'online', url: status.url, localUrl: null, error: null } });
   await invoke('cloud_events');
   await runSync();
-  void updateServerIfOlder();
+  if (!member) void updateServerIfOlder();
 }
 
 /** Vergleicht Versionsnummern wie 2.1.0 (Teile als Zahlen). */
@@ -237,7 +260,44 @@ export async function joinCloud(url: string, code: string): Promise<void> {
 }
 
 /** Verbindung trennen. Die Daten bleiben auf diesem Gerät und in der Cloud. */
+/** Einladungslink zerlegen: https://server/team/<code> */
+export function parseInvite(link: string): { url: string; code: string } | null {
+  const m = /^(https?:\/\/[^/\s]+)\/team\/([0-9a-f]{32})\/?$/i.exec(link.trim());
+  return m ? { url: m[1], code: m[2].toLowerCase() } : null;
+}
+
+/** Einem Team beitreten (Einladungslink) und dieses Gerät verbinden. */
+export async function joinTeam(link: string, input: { name: string; login: string; password: string }): Promise<void> {
+  const invite = parseInvite(link);
+  if (!invite) throw new Error('Das sieht nicht nach einem Einladungslink aus (…/team/…).');
+  const device = await invoke<string>('device_name');
+  await invoke('cloud_team_join', { url: invite.url, code: invite.code, ...input, device });
+  await startCloud();
+}
+
+/** Mit einem bestehenden Team-Konto anmelden (weiteres Gerät). */
+export async function loginTeam(url: string, login: string, password: string): Promise<void> {
+  const device = await invoke<string>('device_name');
+  await invoke('cloud_team_login', { url, login, password, device });
+  await startCloud();
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  login: string;
+  color: string;
+  createdAt: number;
+  lastSeen: number | null;
+}
+
+export const listTeam = async () => (await cloudRequest<{ members: TeamMember[] }>('GET', '/api/team/members')).members;
+export const inviteToTeam = () => cloudRequest<{ code: string; expiresAt: number }>('POST', '/api/team/invites');
+export const removeFromTeam = (id: string) => cloudRequest('DELETE', `/api/team/members/${id}`);
+export const resetTeamPassword = (id: string) => cloudRequest<{ code: string; expiresAt: number }>('POST', `/api/team/members/${id}/reset`);
+
 export async function disconnectCloud(): Promise<void> {
+  const wasMember = useCloud.getState().role === 'member';
   await stopSession();
   await invoke('cloud_forget');
   // Ohne Cloud nichts mehr erfassen; beim nächsten Verbinden wird alles neu abgeglichen.
@@ -250,8 +310,19 @@ export async function disconnectCloud(): Promise<void> {
     { sql: 'DELETE FROM sync_boards' },
     { sql: 'DELETE FROM sync_state' },
     { sql: 'DELETE FROM sync_clock' },
+    // Wer ein fremdes Team verlässt, behält dessen Seiten nicht; die eigenen werden wieder normal.
+    ...(wasMember
+      ? [
+          { sql: "DELETE FROM pages WHERE parent_id IS NULL AND space = 'team'" },
+          { sql: "DELETE FROM categories WHERE space = 'team'" },
+          { sql: "UPDATE pages SET space = 'private' WHERE parent_id IS NULL AND space = 'local'" },
+          { sql: "UPDATE categories SET space = 'private' WHERE space = 'local'" },
+        ]
+      : []),
   ]);
-  useCloud.setState({ phase: 'off', url: null, deviceId: null, error: null, lastSync: null });
+  usePages.setState({ defaultSpace: 'private' });
+  await usePages.getState().load();
+  useCloud.setState({ phase: 'off', url: null, deviceId: null, error: null, lastSync: null, role: null });
   useHosting.setState({ live: false, status: { phase: 'off', url: null, localUrl: null, error: null } });
 }
 

@@ -21,6 +21,8 @@ import type { Space } from '../../db/pages';
 import { cx } from '../../lib/cx';
 import { isSelfOrDescendant, rootOf, type ChildIndex, type PageMap } from '../../lib/tree';
 import { confirmDialog } from '../../store/confirm';
+import { toast } from '../../store/toast';
+import { useCloud } from '../cloud/cloud';
 import { canContain, groupOf, groupRoots, spaceCategories, usePages, type Group } from '../../store/pages';
 import { useUI } from '../../store/ui';
 import { createPageAndOpen } from '../actions';
@@ -100,6 +102,10 @@ function flatten(
 /** Fragt nach, bevor Seiten für andere sichtbar werden oder Geräte verlassen. */
 async function confirmSpaceChange(from: Space, to: Space, what: string): Promise<boolean> {
   if (from === to) return true;
+  if (from === 'team' && useCloud.getState().role === 'member') {
+    toast('Seiten aus dem Team bleiben im Team. Nur wer die Cloud betreibt, kann sie herausnehmen.');
+    return false;
+  }
   if (to === 'team') {
     return confirmDialog({ title: `${what} fürs Team freigeben?`, message: 'Alle im Team können es dann sehen und bearbeiten.', confirmLabel: 'Freigeben' });
   }
