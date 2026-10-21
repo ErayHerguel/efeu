@@ -74,6 +74,33 @@
         </div>
       </section>
 
+      <section>
+        <h2>Im Team arbeiten</h2>
+        <div class="options">
+          <article>
+            <span class="badge">Ordnung</span>
+            <h3>Bereiche und Kategorien</h3>
+            <p>Mit eigener Cloud gliedert sich die Seitenleiste in drei Bereiche, in jedem gibt es Kategorien wie Kanäle bei Discord:</p>
+            <ol>
+              <li><strong>Team</strong>: sehen und bearbeiten alle im Team.</li>
+              <li><strong>Privat</strong>: nur du, auf all deinen Geräten.</li>
+              <li><strong>Nur auf diesem Computer</strong>: verlässt den Computer nie.</li>
+            </ol>
+            <p>Seiten und ganze Kategorien ziehst du per Drag-and-drop zwischen den Bereichen hin und her. Bevor etwas fürs Team sichtbar wird, fragt efeu nach.</p>
+          </article>
+          <article>
+            <span class="badge">Team</span>
+            <h3>Leute einladen</h3>
+            <ol>
+              <li>In efeu <kbd>⌘,</kbd> → <strong>Team</strong> → „Person ins Team einladen“ und den Link schicken.</li>
+              <li>Die Person wählt Name, Benutzername und Passwort und sieht danach nur den Bereich <strong>Team</strong>, im Browser, auf dem Handy oder in ihrer eigenen efeu-App (dort auch offline).</li>
+              <li>Ihr schreibt live zusammen: Cursor, Avatare und „Bearbeitet von …“ zeigen, wer gerade was macht.</li>
+            </ol>
+            <p class="hint">Passwort vergessen? Unter Team erzeugst du einen Link zum Zurücksetzen. Entfernst du jemanden, endet der Zugang sofort auf allen Geräten.</p>
+          </article>
+        </div>
+      </section>
+
       <section class="faq">
         <h2>Fragen zur Cloud</h2>
         <details>
@@ -91,6 +118,14 @@
         <details>
           <summary>Und wenn etwas kaputtgeht?</summary>
           <p>Der Server sichert die Datenbank jeden Tag und behält 14 Tage (Ordner <code>/var/lib/efeu/backups</code>). Außerdem hat jeder verbundene Computer eine vollständige Kopie aller Seiten und macht weiterhin seine eigenen täglichen Backups.</p>
+        </details>
+        <details>
+          <summary>Sieht das Team meine privaten Seiten?</summary>
+          <p>Nein. Der Server gibt Team-Mitgliedern nur, was im Bereich Team liegt, samt Bildern darin. Nimmst du eine Seite aus dem Team, verschwindet sie bei den anderen. Mitglieder können Team-Seiten bearbeiten, aber nicht aus dem Team nehmen oder endgültig löschen.</p>
+        </details>
+        <details>
+          <summary>Was passiert mit meinen Seiten, wenn ich einem Team beitrete?</summary>
+          <p>Sie bleiben unter „Nur auf diesem Computer“ und gehen nicht auf den Server des Teams. Ins Team kommt nur, was du selbst dorthin ziehst. Verlässt du das Team, verschwinden dessen Seiten von deinem Computer, deine eigenen bleiben.</p>
         </details>
         <details>
           <summary>Wer kann meine Daten sehen?</summary>

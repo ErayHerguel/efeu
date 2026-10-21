@@ -91,9 +91,12 @@ function scheduleSync(delay = DEBOUNCE_MS) {
   }, delay);
 }
 
+/** Während der Server aktualisiert wird, nichts abgleichen (er kennt neue Spalten noch nicht). */
+let updatingServer = false;
+
 async function runSync() {
   const s = session;
-  if (!s) return;
+  if (!s || updatingServer) return;
   const { phase } = useCloud.getState();
   if (phase !== 'offline') useCloud.setState({ phase: 'syncing' });
   try {
@@ -210,9 +213,11 @@ export async function startCloud(): Promise<void> {
   if (!member) useHosting.setState({ live: true, status: { phase: 'online', url: status.url, localUrl: null, error: null } });
   await invoke('cloud_events');
   const name = useHosting.getState().hostName !== 'Gastgeber' ? useHosting.getState().hostName : await invoke<string>('device_name');
+  // Erst den Server auf den Stand der App bringen: Ein älterer Server kennt neue Spalten und Tabellen
+  // noch nicht und würde solche Änderungen beim ersten Abgleich verwerfen.
+  if (!member) await updateServerIfOlder();
   await live.start(name).catch((err) => console.warn('Live-Verbindung', err));
   await runSync();
-  if (!member) void updateServerIfOlder();
 }
 
 /** Vergleicht Versionsnummern wie 2.1.0 (Teile als Zahlen). */
@@ -235,6 +240,7 @@ async function updateServerIfOlder() {
   try {
     const [{ version: server }, app] = await Promise.all([cloudRequest<{ version: string }>('GET', '/api/me'), getVersion()]);
     if (!olderVersion(server, app)) return;
+    updatingServer = true;
     await invoke('cloud_update_server');
     toast(`Deine Cloud wird auf efeu ${app} aktualisiert …`);
     // Der Server startet neu; danach wieder abgleichen.
@@ -243,12 +249,13 @@ async function updateServerIfOlder() {
       const me = await cloudRequest<{ version: string }>('GET', '/api/me').catch(() => null);
       if (me && !olderVersion(me.version, app)) {
         toast(`Deine Cloud läuft jetzt mit efeu ${app}.`);
-        scheduleSync(0);
         return;
       }
     }
   } catch (err) {
     console.warn('Cloud konnte nicht aktualisiert werden', err);
+  } finally {
+    updatingServer = false;
   }
 }
 

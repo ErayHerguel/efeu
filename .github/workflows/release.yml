@@ -105,7 +105,7 @@ jobs:
           sig = lambda name: open(f"out/{name}.sig").read().strip()
           manifest = {
               "version": version,
-              "notes": f"efeu {version}: Eigene Cloud – deine Seiten auf allen Geräten, auf deinem eigenen Server.",
+              "notes": f"efeu {version}: Teams mit eigenem Zugang, Bereiche und Kategorien in der Seitenleiste, live zusammen schreiben.",
               "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
               "platforms": {
                   # Eine Universal-App für beide Mac-Architekturen
@@ -125,7 +125,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           gh release create "$GITHUB_REF_NAME" out/* --repo "$GITHUB_REPOSITORY" \
             --title "efeu $VERSION" \
-            --notes "**Neu: Eigene Cloud.** Deine Seiten, Boards und Datenbanken auf allen Geräten und zum Teilen, auch wenn dein Computer aus ist. Sie läuft auf einem kleinen Server, den du selbst mietest (z. B. bei Hetzner); efeu richtet ihn unter Einstellungen → Eigene Cloud automatisch ein. Ohne Cloud bleibt efeu wie bisher komplett lokal.
+            --notes "**Neu: Teams.** Lade Leute in deine eigene Cloud ein: Sie sehen nur den Bereich Team und schreiben live mit dir, im Browser, auf dem Handy oder in ihrer efeu-App. Die Seitenleiste gliedert sich in Team, Privat und Nur auf diesem Computer, mit Kategorien wie bei Discord; Seiten ziehst du einfach zwischen den Bereichen hin und her. Dazu Live-Cursor und „Bearbeitet von …“ auch in der App. Deine Cloud aktualisiert sich beim ersten Verbinden selbst.
 
           **Mac** (Apple Silicon und Intel, macOS 13+): efeu.dmg laden oder im Terminal \`curl -fsSL https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/install.sh | bash\`
 

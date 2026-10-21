@@ -260,6 +260,17 @@ So funktioniert es:
 - Updates: Ist der Server älter als die App, spielt die App ihre Server-Version ein (`/api/admin/update`). Der Server prüft die Signatur gegen den Release-Schlüssel (`server/verify.ts`), unsignierte Entwicklungs-Builds werden abgewiesen.
 - Docker/NAS: `server/Dockerfile`; Release-Assets `efeu-server.mjs` und `efeu-web.tar.gz`. Umgebungsvariablen `EFEU_DATA`, `EFEU_WEB`, `EFEU_HOST`, `EFEU_PORT`; `node efeu-server.mjs pairing-code` gibt einen Kopplungscode aus.
 
+## Teams, Bereiche und Kategorien
+
+Mit eigener Cloud gliedert sich die Seitenleiste in **Team**, **Privat** und **Nur auf diesem Computer**; in jedem Bereich gibt es Kategorien (wie Kanäle bei Discord). Seiten und Kategorien lassen sich frei zwischen den Bereichen ziehen. Der Bereich einer Seite ist der ihrer obersten Seite (`pages.space`, `pages.category_id`, Tabelle `categories`).
+
+- **Einladen:** `⌘,` → **Team** → Link (`https://<server>/team/<code>`, 7 Tage, einmalig). Die Person wählt Name, Benutzername und Passwort (scrypt, nur auf dem Server). Ohne App: `node efeu-server.mjs invite`.
+- **Mitglieder** sind Zeilen in `share_members` mit `team_role = 'member'`. Im Browser melden sie sich unter `/login` an; in ihrer eigenen efeu-App über „Einem Team beitreten“ (eigener Geräteschlüssel, volle Kopie des Team-Bereichs, offline nutzbar). Ihre bisherigen Seiten werden dabei zu „Nur auf diesem Computer“.
+- **Sichtbarkeit:** Der Server gibt Team-Geräten nur Änderungen im Team-Bereich (`server/scope.ts`). Was neu ins Team kommt, wird als Schnappschuss nachgeliefert; was es verlässt, mit `forget` entfernt (ohne Grabstein). Mitglieder dürfen nichts aus dem Team nehmen, nichts endgültig löschen und keine Freigaben ändern; Anhänge bekommen sie nur, wenn Team-Seiten darauf verweisen.
+- **„Nur auf diesem Computer“** wird nie hochgeladen. Wechselt eine Seite von dort in einen anderen Bereich, wird sie samt Inhalt nachgeliefert; umgekehrt wird sie aus der Cloud genommen, bleibt aber lokal. Änderungen von außen fassen solche Seiten nie an.
+- **Live:** Die App verbindet sich per WebSocket mit dem Geräteschlüssel (`/api/ws`) mit demselben Hub wie der Browser: Tippen, Cursor und Präsenz sofort. Der Server vermerkt in `pages.updated_by`, wer zuletzt geändert hat.
+- Passwort zurücksetzen: Link unter Team (`/reset/<code>`, 24 Stunden). Entfernen beendet Zugang, Geräte und Sitzungen sofort.
+
 ## Formeln
 
 Formel-Properties rechnen pro Eintrag, z. B. `prop("Preis") * prop("Menge")` oder `if(prop("Status") == "Erledigt", "✓", "")`. Verfügbar: `+ - * / % ^`, Vergleiche, `&& || !`, sowie `if, concat, length, lower, upper, contains, empty, round, floor, ceil, abs, sqrt, min, max, toNumber, format, today, dateAdd, dateBetween`.
