@@ -1,5 +1,6 @@
 import { fromBase64, toBase64 } from 'lib0/buffer';
 import { TAG_COLORS, type CellValue, type PropertyType, type ViewType } from '../../db/database';
+import type { Category } from '../../db/categories';
 import type { PagePatch, PageType } from '../../db/pages';
 import type { SearchHit } from '../../db/search';
 import type { DatabaseData } from '../../store/databases';
@@ -24,9 +25,11 @@ export interface Person {
 export interface Welcome {
   conn: number;
   /** device: eigenes Gerät mit vollem Zugriff */
-  me: { memberId: string; name: string; color: string; kind: 'person' | 'device' };
+  me: { memberId: string; name: string; color: string; kind: 'person' | 'device'; team?: boolean };
   host: { name: string; color: string };
   pages: GuestPage[];
+  /** Kategorien der Seitenleiste, die die Person sehen darf */
+  categories?: Category[];
 }
 
 export interface BoardFile {
@@ -110,7 +113,8 @@ export type ServerMessage =
       button: 'up' | 'down';
     }
   | { t: 'board.leave'; pageId: string; person: string }
-  | { t: 'db'; databaseId: string; data: DatabaseData };
+  | { t: 'db'; databaseId: string; data: DatabaseData }
+  | { t: 'categories'; categories: Category[] };
 
 export type SearchResult = SearchHit[];
 

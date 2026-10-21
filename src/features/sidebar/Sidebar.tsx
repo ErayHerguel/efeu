@@ -10,6 +10,7 @@ import { GUEST } from '../../lib/mode';
 import { IS_MAC } from '../../lib/platform';
 import { useNarrow } from '../../lib/useNarrow';
 import { GuestIdentity } from '../collab/guest/GuestIdentity';
+import { useGuest } from '../collab/guest/session';
 import { useAccess } from '../collab/sources';
 import { ShareButton } from '../collab/host/ShareButton';
 import { useUI, type Theme } from '../../store/ui';
@@ -90,6 +91,7 @@ function SidebarContent({ narrow }: { narrow: boolean }) {
   const fullAccess = useAccess((s) => s.access === null);
   const sections = useSections();
   const member = useCloud((s) => s.role === 'member');
+  const teamGuest = useGuest((s) => Boolean(s.me?.team));
   const palette = actionById('palette.open');
   const homeId = useUI((s) => s.homeId);
   const favorites = useUI((s) => s.favorites);
@@ -156,7 +158,7 @@ function SidebarContent({ narrow }: { narrow: boolean }) {
 
       {!sections.headers && (
         <div className="mt-4 mb-1 px-4 text-2xs font-medium tracking-wide text-faint uppercase">
-          {fullAccess ? 'Seiten' : 'Mit dir geteilt'}
+          {teamGuest ? 'Team' : fullAccess ? 'Seiten' : 'Mit dir geteilt'}
         </div>
       )}
       <div className={cx('min-h-0 flex-1 overflow-y-auto px-2', sections.headers && 'mt-4')}>

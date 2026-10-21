@@ -19,6 +19,7 @@ import { Popover, pointAnchor, type Anchor } from '../../components/Popover';
 import type { Category } from '../../db/categories';
 import type { Space } from '../../db/pages';
 import { cx } from '../../lib/cx';
+import { GUEST } from '../../lib/mode';
 import { isSelfOrDescendant, rootOf, type ChildIndex, type PageMap } from '../../lib/tree';
 import { confirmDialog } from '../../store/confirm';
 import { toast } from '../../store/toast';
@@ -443,7 +444,8 @@ function CategoryHeader({
 }) {
   const key = catKey(category.id);
   const collapsed = useUI((s) => Boolean(s.collapsed[key]));
-  const drag = useDraggable({ id: key, disabled: renaming });
+  // Im Browser (Gast, Team-Mitglied) ordnet der Inhaber die Kategorien.
+  const drag = useDraggable({ id: key, disabled: renaming || GUEST });
   const dropZone = useDroppable({ id: key });
   const setRef = useCallback(
     (node: HTMLElement | null) => {
@@ -472,8 +474,8 @@ function CategoryHeader({
         role="button"
         aria-expanded={!collapsed}
         onClick={() => useUI.getState().setCollapsed(key, !collapsed)}
-        onDoubleClick={onRename}
-        onContextMenu={open}
+        onDoubleClick={GUEST ? undefined : onRename}
+        onContextMenu={GUEST ? undefined : open}
         className={cx(
           'group relative mt-1.5 flex h-7 shrink-0 items-center gap-1 rounded-md pr-1 pl-1 text-xs font-medium text-faint outline-none hover:bg-hover hover:text-muted',
           drop === 'inside' && 'bg-accent-soft text-text',
@@ -507,9 +509,11 @@ function CategoryHeader({
         )}
         {!renaming && (
           <span className="touch-flex hidden shrink-0 items-center gap-0.5 group-hover:flex" onPointerDown={stop}>
-            <button aria-label="Optionen" onClick={open} className="flex h-5 w-5 items-center justify-center rounded-sm hover:bg-active">
-              <MoreHorizontal size={14} />
-            </button>
+            {!GUEST && (
+              <button aria-label="Optionen" onClick={open} className="flex h-5 w-5 items-center justify-center rounded-sm hover:bg-active">
+                <MoreHorizontal size={14} />
+              </button>
+            )}
             <button
               aria-label={`Neue Seite in „${category.name}“`}
               onClick={(e) => {

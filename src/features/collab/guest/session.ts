@@ -97,7 +97,8 @@ async function signIn(): Promise<boolean> {
 const pendingPatches = new Map<string, { patch: Partial<PageMeta>; seq: number }>();
 let patchSeq = 0;
 
-const isDevice = () => useGuest.getState().me?.kind === 'device';
+/** Eigenes Gerät oder Team-Mitglied: darf oberste Seiten anlegen und verschieben. */
+const isDevice = () => useGuest.getState().me?.kind === 'device' || Boolean(useGuest.getState().me?.team);
 
 function applyPages(upsert: GuestPage[], remove: string[], reset = false) {
   const pages: PageMap = reset ? {} : { ...usePages.getState().pages };
@@ -180,6 +181,11 @@ function installPageActions() {
       if (!parentId && !isDevice()) return void toast('Auf die oberste Ebene kann nur der Gastgeber verschieben');
       if (!canEdit(id) || (parentId && !canEdit(parentId))) readOnly();
       await request({ op: 'page.move', id, parentId, index }, 'Seite verschieben');
+    },
+
+    // Kategorien ordnet der Gastgeber; im Browser landen oberste Seiten in ihrem Bereich.
+    async moveToGroup(id, _group, index) {
+      await usePages.getState().move(id, null, index);
     },
 
     async trash(id) {
@@ -358,6 +364,9 @@ function onMessage(message: ServerMessage) {
       serverDb.set(message.databaseId, message.data);
       setDb(message.databaseId, message.data);
       return;
+    case 'categories':
+      usePages.setState({ categories: Object.fromEntries(message.categories.map((c) => [c.id, c])) });
+      return;
   }
 }
 
@@ -367,6 +376,7 @@ async function greet() {
   useGuest.setState({ me: welcome.me, host: welcome.host });
   usePresence.setState({ me: `c${welcome.conn}` });
   applyPages(welcome.pages, [], true);
+  usePages.setState({ categories: Object.fromEntries((welcome.categories ?? []).map((c) => [c.id, c])) });
   for (const id of openDbs) {
     if (!usePages.getState().pages[id]) continue;
     void useDatabases.getState().load(id).catch((err) => console.error('Datenbank neu laden', err));

@@ -16,6 +16,7 @@ import { flush } from '../../../db/saveQueue';
 import { searchPages } from '../../../db/search';
 import { importImageBlob } from '../../../lib/assets';
 import { useDatabases } from '../../../store/databases';
+import type { Category } from '../../../db/categories';
 import { canContain, usePages } from '../../../store/pages';
 import { rootOf } from '../../../lib/tree';
 import { useUI } from '../../../store/ui';
@@ -54,6 +55,8 @@ interface Connection {
   view: string | null;
   /** Zuletzt gesendete Seiten (als JSON), für Änderungslisten */
   sentPages: Map<string, string>;
+  /** Zuletzt gesendete Kategorien (als JSON) */
+  sentCategories: string;
   dbs: Set<string>;
   sentDb: Map<string, unknown>;
   /** Nachrichten einer Verbindung werden der Reihe nach verarbeitet. */
@@ -173,6 +176,14 @@ export function syncAccess() {
   scheduleSync();
 }
 
+/** Kategorien für die Seitenleiste: eigene Geräte alle, Team-Mitglieder die des Teams, Gäste keine. */
+function categoriesFor(memberId: string): Category[] {
+  const all = Object.values(usePages.getState().categories);
+  if (isDevice(memberId)) return all;
+  if (isTeam(memberId)) return all.filter((c) => c.space === 'team');
+  return [];
+}
+
 function syncPages() {
   const pages = usePages.getState().pages;
   for (const c of conns.values()) {
@@ -189,6 +200,12 @@ function syncPages() {
     }
     const remove = [...c.sentPages.keys()].filter((id) => !seen.has(id));
     for (const id of remove) c.sentPages.delete(id);
+    const categories = categoriesFor(c.memberId);
+    const json = JSON.stringify(categories);
+    if (json !== c.sentCategories) {
+      c.sentCategories = json;
+      send([c.conn], { t: 'categories', categories });
+    }
     if (upsert.length || remove.length) send([c.conn], { t: 'pages', upsert, remove });
     if (remove.length) void dropInaccessible(c, access);
   }
@@ -398,13 +415,16 @@ async function handle(c: Connection, req: Request): Promise<unknown> {
       c.sentPages.clear();
       const visible = guestPages(pages, accessOf(c.memberId));
       for (const page of visible) c.sentPages.set(page.id, JSON.stringify(page));
+      const categories = categoriesFor(c.memberId);
+      c.sentCategories = JSON.stringify(categories);
       scheduleSync();
       const { hostName } = useHosting.getState();
       const welcome: Welcome = {
         conn: c.conn,
-        me: { memberId: member.id, name: member.name, color: member.color, kind: member.kind },
+        me: { memberId: member.id, name: member.name, color: member.color, kind: member.kind, team: member.teamRole === 'member' },
         host: { name: hostName, color: HOST_COLOR },
         pages: visible,
+        categories,
       };
       return welcome;
     }
@@ -531,6 +551,7 @@ function onOpen(conn: number, memberId: string) {
     ready: false,
     view: null,
     sentPages: new Map(),
+    sentCategories: '',
     dbs: new Set(),
     sentDb: new Map(),
     queue: Promise.resolve(),
@@ -585,7 +606,7 @@ export async function startHub(using: HubTransport = tauriTransport) {
   cleanup = [
     unlisten,
     usePages.subscribe((s, prev) => {
-      if (s.pages === prev.pages) return;
+      if (s.pages === prev.pages && s.categories === prev.categories) return;
       accessCache.clear();
       scheduleSync();
     }),
