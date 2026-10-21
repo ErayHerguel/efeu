@@ -249,6 +249,38 @@ export class Sharing {
     res.end(this.index);
   }
 
+  private edits = new Map<string, string>();
+  private editTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Wird aufgerufen, um gesammelte Bearbeitungen zu vermerken (Seite → Name). */
+  onEdits: ((edits: Map<string, string>) => void) | null = null;
+
+  /** Merkt sich, wer im Browser oder live in der App welche Seite bearbeitet (für „Zuletzt bearbeitet von …“). */
+  private noteEdit(memberId: string, text: string) {
+    let page: string | null = null;
+    try {
+      const m = JSON.parse(text) as { t?: string; pageId?: unknown; req?: { op?: string; id?: unknown } };
+      if ((m.t === 'doc.update' || m.t === 'board.update') && typeof m.pageId === 'string') page = m.pageId;
+      else if (m.t === 'req' && m.req?.op === 'page.update' && typeof m.req.id === 'string') page = m.req.id;
+    } catch {
+      return;
+    }
+    if (!page) return;
+    const name = memberId.startsWith('owner-')
+      ? (this.ownerNames.get(memberId) ?? 'Inhaber')
+      : ((this.store.raw.prepare('SELECT name FROM share_members WHERE id = ?').get(memberId) as { name: string } | undefined)?.name ?? 'Gast');
+    this.edits.set(page, name);
+    this.editTimer ??= setTimeout(() => {
+      this.editTimer = null;
+      const edits = this.edits;
+      this.edits = new Map();
+      this.onEdits?.(edits);
+    }, 2000);
+  }
+
+  private ownerNames = new Map<string, string>();
+  /** Name, unter dem sich der Inhaber zuletzt live gemeldet hat */
+  onOwnerName: ((name: string) => void) | null = null;
+
   /** WebSocket der Gast-Oberfläche. */
   upgrade(req: IncomingMessage, socket: Duplex, head: Buffer) {
     const deny = (status: string) => {
@@ -267,6 +299,8 @@ export class Sharing {
       else if (device) {
         const name = new URL(req.url ?? '/', 'http://localhost').searchParams.get('name')?.trim().slice(0, 80) || device.name;
         memberId = `owner-${device.id}`;
+        this.ownerNames.set(memberId, name);
+        this.onOwnerName?.(name);
         registerVirtualMember({ id: memberId, name, token: '', color: HOST_COLOR, createdAt: device.createdAt, kind: 'device', teamRole: null });
       }
     }
@@ -278,7 +312,10 @@ export class Sharing {
       this.handlers?.open(conn, memberId);
       const ping = setInterval(() => ws.readyState === ws.OPEN && ws.ping(), 25_000);
       ws.on('message', (data, binary) => {
-        if (!binary) this.handlers?.message(conn, memberId, data.toString());
+        if (binary) return;
+        const text = data.toString();
+        this.noteEdit(memberId, text);
+        this.handlers?.message(conn, memberId, text);
       });
       ws.on('close', () => {
         clearInterval(ping);

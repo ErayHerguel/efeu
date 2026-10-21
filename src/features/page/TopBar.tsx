@@ -4,7 +4,7 @@ import { openAiBar } from '../ai/edit/session';
 import { suggestTitle } from '../ai/title';
 import { openLectureStart } from '../lecture/LectureUI';
 import { useLecture } from '../lecture/lecture';
-import { Fragment, useCallback, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { IconButton } from '../../components/IconButton';
 import { MenuList } from '../../components/MenuList';
 import { PageIcon, pageTitle } from '../../components/PageIcon';
@@ -14,6 +14,7 @@ import { GUEST } from '../../lib/mode';
 import { IS_MAC } from '../../lib/platform';
 import { useNarrow } from '../../lib/useNarrow';
 import { ConnectionIndicator } from '../collab/guest/GuestIdentity';
+import { useGuest } from '../collab/guest/session';
 import { CloudIndicator } from '../cloud/CloudSettings';
 import { useCloud } from '../cloud/cloud';
 import { PageShareButton } from '../collab/host/PageShare';
@@ -86,6 +87,7 @@ export function TopBar({ pageId }: { pageId: string | null }) {
       </nav>
 
       <div data-tauri-drag-region className="h-full flex-1" />
+      {page && <EditedBy pageId={page.id} />}
       {GUEST ? <ConnectionIndicator /> : <SaveIndicator />}
       {!GUEST && <CloudIndicator />}
       <PagePresence />
@@ -177,6 +179,34 @@ export function TopBar({ pageId }: { pageId: string | null }) {
         </Popover>
       )}
     </header>
+  );
+}
+
+function relative(ms: number): string {
+  const minutes = Math.round((Date.now() - ms) / 60_000);
+  if (minutes < 1) return 'gerade eben';
+  if (minutes < 60) return `vor ${minutes} Min.`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `vor ${hours} Std.`;
+  return new Date(ms).toLocaleDateString('de-DE');
+}
+
+/** „Bearbeitet von Lena · vor 5 Min.“, wenn zuletzt jemand anderes an der Seite war. */
+function EditedBy({ pageId }: { pageId: string }) {
+  const page = usePages((s) => s.pages[pageId]);
+  const cloudName = useCloud((s) => s.displayName);
+  const guestName = useGuest((s) => s.me?.name ?? null);
+  const me = GUEST ? guestName : cloudName;
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => tick((n) => n + 1), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+  if (!page?.updatedBy || page.updatedBy === me) return null;
+  return (
+    <span className="mr-2 hidden truncate text-xs text-faint md:inline" title={new Date(page.updatedAt).toLocaleString('de-DE')}>
+      Bearbeitet von {page.updatedBy} · {relative(page.updatedAt)}
+    </span>
   );
 }
 

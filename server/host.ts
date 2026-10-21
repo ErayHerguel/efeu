@@ -45,6 +45,14 @@ export async function startHost(store: Store, sharing: Sharing, team: Team): Pro
     await startHub({ ...sharing.transport(), loadDoc: (page) => replica.loadDoc(page) });
   }
 
+  sharing.onOwnerName = (name) => cloud!.setOwnerName(name);
+  sharing.onEdits = (edits) => {
+    for (const [page, name] of edits) {
+      store.raw.prepare('UPDATE pages SET updated_by = ? WHERE id = ? AND updated_by IS NOT ?').run(name, page, name);
+    }
+    void cloud!.drainLocal().then(() => usePages.getState().load()).catch((err) => console.error('Bearbeiter vermerken', err));
+  };
+
   // Änderungen aus dem Browser kurz sammeln und dann für die Geräte bereitstellen.
   let timer: ReturnType<typeof setTimeout> | null = null;
   onWrite(() => {

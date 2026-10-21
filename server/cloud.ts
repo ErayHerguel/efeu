@@ -102,9 +102,41 @@ export class Cloud {
       }
       const applied = await this.replica.apply(valid);
       const seq = this.append(origin, valid);
+      this.stampEditor(valid, this.editorName(memberId));
       this.onApplied(applied);
       return seq;
-    });
+    }).finally(() => void this.drainLocal().catch(() => undefined));
+  }
+
+  /** Anzeigename für „Zuletzt bearbeitet von …“: Team-Mitglied oder der Inhaber. */
+  editorName(memberId: string | null): string {
+    if (memberId) {
+      const row = this.store.raw.prepare('SELECT name FROM share_members WHERE id = ?').get(memberId) as { name: string } | undefined;
+      if (row) return row.name;
+    }
+    const owner = this.store.raw.prepare("SELECT value FROM cloud_meta WHERE key = 'owner_name'").get() as { value: string } | undefined;
+    return owner?.value || 'Inhaber';
+  }
+
+  setOwnerName(name: string) {
+    this.store.raw.prepare("INSERT INTO cloud_meta (key, value) VALUES ('owner_name', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(name);
+  }
+
+  /** Vermerkt bei den betroffenen Seiten, wer zuletzt geändert hat (wird wie jede Änderung abgeglichen). */
+  stampEditor(changes: Change[], name: string) {
+    const pages = new Set<string>();
+    for (const c of changes) {
+      if (c.kind === 'doc' || c.kind === 'board') pages.add(c.page);
+      else if (c.kind === 'row' && c.cols && (c.tbl === 'pages' || c.tbl === 'db_values')) {
+        // Nur echte Bearbeitungen, nicht der Vermerk selbst oder bloßes Umsortieren.
+        const keys = Object.keys(c.cols).filter((k) => !['updated_by', 'sort_order', 'updated_at'].includes(k));
+        if (keys.length) pages.add(String((JSON.parse(c.pk) as string[])[0]));
+      }
+    }
+    if (!pages.size) return;
+    this.store.raw
+      .prepare('UPDATE pages SET updated_by = ? WHERE id IN (SELECT value FROM json_each(?)) AND updated_by IS NOT ?')
+      .run(name, JSON.stringify([...pages]), name);
   }
 
   /** Änderungen, die auf dem Server selbst entstanden sind (z. B. im Browser), ins Protokoll übernehmen. */

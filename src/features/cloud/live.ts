@@ -5,6 +5,7 @@ import * as Y from 'yjs';
 import { useUI } from '../../store/ui';
 import { decodeBinary, encodeBinary, type ClientMessage, type DocSnapshot, type Request, type ServerMessage, type Welcome } from '../collab/protocol';
 import { usePresence } from '../collab/presence';
+import { useCloud } from './cloud';
 
 /** Ursprung von Änderungen, die über die Live-Verbindung kamen (werden nicht zurückgeschickt). */
 export const LIVE = 'cloud-live';
@@ -76,6 +77,7 @@ class LiveBridge {
     try {
       const welcome = await this.request<Welcome>({ op: 'hello' });
       this.me = welcome.me;
+      useCloud.setState({ displayName: welcome.me.name });
       usePresence.setState({ me: `c${welcome.conn}` });
       this.send({ t: 'view', pageId: useUI.getState().currentId });
       for (const pageId of this.docs.keys()) void this.subscribe(pageId);

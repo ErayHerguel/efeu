@@ -110,6 +110,14 @@ describe('Team', () => {
     await lena.client.sync();
     await owner.client.sync();
     expect(await owner.titles()).toEqual(['Aufgaben', 'Projektplan 2027', 'Tagebuch', 'Von Lena']);
+    // Der Server vermerkt, wer zuletzt geändert hat; das kommt beim Inhaber an.
+    for (let i = 0; i < 20; i++) {
+      await owner.client.sync();
+      const [row] = await owner.driver.select<{ updated_by: string | null }>("SELECT updated_by FROM pages WHERE id = 'team1'");
+      if (row.updated_by) break;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    expect(await owner.driver.select("SELECT updated_by FROM pages WHERE id = 'team1'")).toEqual([{ updated_by: 'Lena' }]);
     await lena.client['transport'].push([{ kind: 'row', tbl: 'pages', pk: '["privat"]', cols: { title: 'Gehackt' }, hlc: '999999999999998-lena' }]);
     await lena.client['transport'].push([{ kind: 'row', tbl: 'pages', pk: '["team1"]', cols: { space: 'private' }, hlc: '999999999999998-lena' }]);
     await lena.client['transport'].push([{ kind: 'row', tbl: 'pages', pk: '["team1"]', cols: null, hlc: '999999999999998-lena' }]);

@@ -29,6 +29,8 @@ interface CloudState {
   newPassword: string | null;
   /** Eigene Cloud (Inhaber) oder als Mitglied im Team eines anderen */
   role: 'owner' | 'member' | null;
+  /** Name, unter dem andere einen sehen (aus der Live-Verbindung) */
+  displayName: string | null;
 }
 
 export const useCloud = create<CloudState>(() => ({
@@ -39,6 +41,7 @@ export const useCloud = create<CloudState>(() => ({
   lastSync: null,
   newPassword: null,
   role: null,
+  displayName: null,
 }));
 
 interface Status {
