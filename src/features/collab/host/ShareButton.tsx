@@ -8,7 +8,7 @@ import { useHosting } from './hosting';
 export function ShareButton() {
   const live = useHosting((s) => s.live);
   const phase = useHosting((s) => s.status.phase);
-  const guests = usePresence((s) => s.people.filter((p) => p.id !== 'host').length);
+  const guests = usePresence((s) => s.people.filter((p) => p.id !== 'host' && p.id !== s.me).length);
   const dot = !live ? null : phase === 'online' ? 'bg-[#30a46c]' : phase === 'error' ? 'bg-danger' : 'bg-[#ffc53d]';
   const label = !live ? 'Teilen' : phase === 'online' ? (guests ? `${guests} online` : 'Online') : phase === 'error' ? 'Fehler' : 'Startet …';
   return (

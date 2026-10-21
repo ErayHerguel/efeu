@@ -14,6 +14,7 @@ import { openStore } from './store';
  *   node efeu-server.mjs                       Server starten
  *   node efeu-server.mjs add-device "MacBook"  Gerät anlegen, gibt dessen Schlüssel als JSON aus
  *   node efeu-server.mjs pairing-code          Einmaligen Kopplungscode für ein weiteres Gerät ausgeben
+ *   node efeu-server.mjs invite                Einladung ins Team (Link: <adresse>/team/<code>)
  *
  * Einstellungen über Umgebungsvariablen: EFEU_DATA (Datenordner), EFEU_WEB (Web-Oberfläche), EFEU_HOST, EFEU_PORT.
  */
@@ -35,6 +36,11 @@ async function main() {
   }
   if (command === 'pairing-code') {
     process.stdout.write(`${JSON.stringify(devices.pairingCode())}\n`);
+    return;
+  }
+  if (command === 'invite') {
+    // Einladung ins Team ohne App (z. B. für Docker); gibt den Code aus, der Link ist <adresse>/team/<code>.
+    process.stdout.write(`${JSON.stringify(new Team(store).createInvite())}\n`);
     return;
   }
   if (command === 'version') {

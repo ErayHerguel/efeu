@@ -128,8 +128,8 @@ export class Cloud {
     for (const c of changes) {
       if (c.kind === 'doc' || c.kind === 'board') pages.add(c.page);
       else if (c.kind === 'row' && c.cols && (c.tbl === 'pages' || c.tbl === 'db_values')) {
-        // Nur echte Bearbeitungen, nicht der Vermerk selbst oder bloßes Umsortieren.
-        const keys = Object.keys(c.cols).filter((k) => !['updated_by', 'sort_order', 'updated_at'].includes(k));
+        // Nur echte Bearbeitungen, nicht der Vermerk selbst oder bloßes Verschieben.
+        const keys = Object.keys(c.cols).filter((k) => !['updated_by', 'sort_order', 'updated_at', 'space', 'category_id', 'parent_id'].includes(k));
         if (keys.length) pages.add(String((JSON.parse(c.pk) as string[])[0]));
       }
     }

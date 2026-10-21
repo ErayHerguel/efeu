@@ -358,6 +358,11 @@ export function PageTree({ spaces, headers }: { spaces: Space[]; headers: boolea
 
 const stop = (e: { stopPropagation(): void }) => e.stopPropagation();
 
+/** Pfeil zum Auf- und Zuklappen. Die Drehung steht direkt im Stil (WebKit malte sie per Klasse nicht immer neu). */
+function Chevron({ open }: { open: boolean }) {
+  return <ChevronRight size={12} className="shrink-0 transition-transform" style={{ transform: open ? 'rotate(90deg)' : 'none' }} />;
+}
+
 function useMenu() {
   const [menu, setMenu] = useState<Anchor | null>(null);
   const open = (e: ReactMouseEvent) => {
@@ -385,7 +390,7 @@ function SectionHeader({ space, drop, onNewCategory }: { space: Space; drop: boo
           drop && 'bg-accent-soft text-text',
         )}
       >
-        <ChevronRight size={12} className={cx('shrink-0 transition-transform', !collapsed && 'rotate-90')} />
+        <Chevron open={!collapsed} />
         <span className="min-w-0 flex-1 truncate">{SPACE_LABEL[space]}</span>
         <span className="touch-flex hidden items-center gap-0.5 group-hover:flex" onPointerDown={stop}>
           <button
@@ -484,7 +489,7 @@ function CategoryHeader({
       >
         {drop === 'before' && <div className="absolute inset-x-1 -top-px h-0.5 rounded-full bg-accent" />}
         {drop === 'after' && <div className="absolute inset-x-1 -bottom-px h-0.5 rounded-full bg-accent" />}
-        <ChevronRight size={12} className={cx('shrink-0 transition-transform', !collapsed && 'rotate-90')} />
+        <Chevron open={!collapsed} />
         {renaming ? (
           <input
             autoFocus

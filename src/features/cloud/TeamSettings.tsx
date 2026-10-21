@@ -6,7 +6,8 @@ import { IconButton } from '../../components/IconButton';
 import { confirmDialog } from '../../store/confirm';
 import { reportError, toast } from '../../store/toast';
 import { Button, Heading } from '../settings/controls';
-import { inviteToTeam, listTeam, removeFromTeam, resetTeamPassword, useCloud, type TeamMember } from './cloud';
+import { useHosting } from '../collab/host/hosting';
+import { inviteToTeam, listTeam, removeFromTeam, resetTeamPassword, setDisplayName, useCloud, type TeamMember } from './cloud';
 
 const copy = (text: string) => void writeText(text).then(() => toast('Link kopiert'));
 
@@ -38,6 +39,7 @@ function lastSeen(m: TeamMember): string {
 export function TeamSettings() {
   const url = useCloud((s) => s.url);
   const role = useCloud((s) => s.role);
+  const hostName = useHosting((s) => s.hostName);
   const [members, setMembers] = useState<TeamMember[] | null>(null);
   const [invite, setInvite] = useState<string | null>(null);
   const [reset, setReset] = useState<{ name: string; link: string } | null>(null);
@@ -102,6 +104,18 @@ export function TeamSettings() {
         Mitglieder sehen und bearbeiten alles im Bereich <strong className="font-medium text-text">Team</strong>, im Browser, auf dem Handy oder
         in ihrer eigenen efeu-App. Deine privaten Seiten sehen sie nie. Einzelne Seiten für Gäste gibst du weiter wie bisher über „Teilen“.
       </p>
+
+      <section>
+        <Heading>Dein Name im Team</Heading>
+        <input
+          defaultValue={hostName === 'Gastgeber' ? '' : hostName}
+          placeholder="So sehen dich die anderen"
+          onBlur={(e) => void setDisplayName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          aria-label="Dein Name im Team"
+          className="h-9 w-full max-w-[320px] rounded-md border border-border bg-bg px-2.5 text-sm outline-none focus:border-accent"
+        />
+      </section>
 
       <section className="space-y-3">
         <Heading>Einladen</Heading>

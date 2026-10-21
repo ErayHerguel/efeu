@@ -356,6 +356,17 @@ export async function disconnectCloud(): Promise<void> {
 
 export const syncNow = () => scheduleSync(0);
 
+/** Name, unter dem andere einen sehen (Cursor, Präsenz, „Bearbeitet von …“). */
+export async function setDisplayName(name: string): Promise<void> {
+  const clean = name.trim().slice(0, 80);
+  if (!clean) return;
+  useHosting.getState().setHostName(clean);
+  if (!session) return;
+  // Neu verbinden, damit die anderen den neuen Namen sehen.
+  await live.stop();
+  await live.start(clean);
+}
+
 export const listDevices = () => cloudRequest<{ devices: CloudDevice[]; me: string }>('GET', '/api/devices');
 export const removeDevice = (id: string) => cloudRequest('DELETE', `/api/devices/${id}`);
 export const renameDevice = (id: string, name: string) => cloudRequest('PATCH', `/api/devices/${id}`, { name });
