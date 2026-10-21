@@ -5,6 +5,7 @@ import { createApp, VERSION } from './app';
 import { Devices } from './devices';
 import { startHost } from './host';
 import { Sharing } from './share';
+import { Team } from './team';
 import { openStore } from './store';
 
 /**
@@ -47,8 +48,9 @@ async function main() {
   }
 
   const sharing = new Sharing(store, web);
-  const cloud = await startHost(store, sharing);
-  const server = createApp({ store, cloud, devices, sharing });
+  const team = new Team(store);
+  const { cloud, teamChanged } = await startHost(store, sharing, team);
+  const server = createApp({ store, cloud, devices, sharing, team, teamChanged });
   server.listen(port, host, () => console.log(`efeu Cloud ${VERSION} läuft auf http://${host}:${port} (Daten: ${dir})`));
 
   const daily = () => {

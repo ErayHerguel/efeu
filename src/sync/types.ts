@@ -9,8 +9,10 @@ export type { BoardElement };
  * - row: Spalten einer Tabellenzeile, die neuere Änderung je Spalte gewinnt (cols null = Zeile gelöscht)
  * - doc: Yjs-Update eines Seiteninhalts, wird zeichengenau zusammengeführt
  * - board: Board-Elemente, die höhere Version je Element gewinnt
+ * - forget: Seiten und Kategorien, die das Gerät nicht mehr sehen darf (nur von der Cloud an Team-Geräte);
+ *   sie werden lokal entfernt, ohne dass das als Löschung zurückgeht
  */
-export type Change = RowChange | DocChange | BoardChange;
+export type Change = RowChange | DocChange | BoardChange | ForgetChange;
 
 export interface RowChange {
   kind: 'row';
@@ -34,4 +36,10 @@ export interface BoardChange {
   elements: BoardElement[];
   files: Record<string, { asset: string; mimeType: string }>;
   background: { value: string; hlc: string } | null;
+}
+
+export interface ForgetChange {
+  kind: 'forget';
+  pages: string[];
+  categories: string[];
 }

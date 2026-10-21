@@ -144,6 +144,7 @@ export const useHosting = create<HostingState>((set, get) => ({
       color: MEMBER_COLORS[members.length % MEMBER_COLORS.length],
       createdAt: Date.now(),
       kind,
+      teamRole: null,
     };
     const statements = [insertMember(member)];
     let { topic } = get();

@@ -4,6 +4,8 @@ import type { Cloud } from './cloud';
 import type { Device, Devices } from './devices';
 import type { Sharing } from './share';
 import { applyUpdate } from './update';
+import { TeamError, type Team } from './team';
+import { teamVisible, visibleAssets } from './scope';
 import type { Store } from './store';
 
 declare const __EFEU_VERSION__: string;
@@ -81,11 +83,23 @@ export interface Context {
   cloud: Cloud;
   devices: Devices;
   sharing?: Sharing;
+  team?: Team;
+  /** Nach Änderungen am Team (Beitritt, Entfernen): Ansichten und Protokoll nachführen */
+  teamChanged?: () => void;
 }
 
 /** HTTP-Schnittstelle der Cloud. Läuft hinter einem HTTPS-Proxy (Caddy) oder im Heimnetz. */
-export function createApp({ store, cloud, devices, sharing }: Context): Server {
+export function createApp({ store, cloud, devices, sharing, team, teamChanged = () => undefined }: Context): Server {
   const pairLimiter = new Limiter(10, 60_000);
+  const loginLimiter = new Limiter(10, 5 * 60_000);
+  const limit = (req: IncomingMessage, limiter: Limiter) => {
+    if (!limiter.allow(req.socket.remoteAddress ?? '')) throw new HttpError(429, 'Zu viele Versuche, bitte kurz warten');
+  };
+  /** Zugang für das Team: Web-Token und, für efeu auf einem Computer, ein eigener Geräteschlüssel */
+  const teamAccess = (memberId: string, token: string, deviceName: unknown) => {
+    const device = typeof deviceName === 'string' && deviceName.trim() ? devices.add(deviceName, memberId) : null;
+    return { memberId, token, deviceToken: device?.token ?? null, deviceId: device?.device.id ?? null };
+  };
 
   const auth = (req: IncomingMessage): Device => {
     const device = devices.verify(bearer(req));
@@ -118,20 +132,60 @@ export function createApp({ store, cloud, devices, sharing }: Context): Server {
       return send(res, 200, { token: result.token, device: result.device });
     }
 
+    if (team && method === 'POST' && path === '/api/team/join') {
+      limit(req, loginLimiter);
+      const body = await readJson<Record<string, unknown>>(req);
+      try {
+        const { memberId, token } = await team.join(String(body.code ?? ''), body);
+        teamChanged();
+        return send(res, 200, teamAccess(memberId, token, body.device));
+      } catch (err) {
+        if (err instanceof TeamError) throw new HttpError(400, err.message);
+        throw err;
+      }
+    }
+    if (team && method === 'POST' && path === '/api/team/login') {
+      limit(req, loginLimiter);
+      const body = await readJson<Record<string, unknown>>(req);
+      const found = team.login(String(body.login ?? ''), String(body.password ?? ''));
+      if (!found) {
+        await new Promise((r) => setTimeout(r, 400));
+        throw new HttpError(401, 'Benutzername oder Passwort stimmt nicht.');
+      }
+      return send(res, 200, teamAccess(found.memberId, found.token, body.device));
+    }
+    if (team && method === 'POST' && path === '/api/team/reset') {
+      limit(req, loginLimiter);
+      const body = await readJson<Record<string, unknown>>(req);
+      try {
+        team.resetPassword(String(body.code ?? ''), String(body.password ?? ''));
+      } catch (err) {
+        if (err instanceof TeamError) throw new HttpError(400, err.message);
+        throw err;
+      }
+      return send(res, 200, { ok: true });
+    }
+    const invite = /^\/api\/team\/invite\/([0-9a-f]{32})$/.exec(path);
+    if (team && invite && method === 'GET') return send(res, 200, { valid: team.inviteValid(invite[1]) });
+
     const device = auth(req);
+    /** Nur Geräte des Inhabers (nicht die von Team-Mitgliedern) */
+    const owner = () => {
+      if (device.memberId) throw new HttpError(403, 'Nur für den Inhaber der Cloud');
+    };
 
     if (method === 'GET' && path === '/api/me') return send(res, 200, { device, version: VERSION });
 
     if (method === 'POST' && path === '/api/sync/push') {
       const body = await readJson<{ changes?: unknown }>(req);
       if (!Array.isArray(body.changes)) throw new HttpError(400, 'changes fehlt');
-      const seq = await cloud.push(device.id, body.changes);
+      const seq = await cloud.push(device.id, body.changes, device.memberId);
       return send(res, 200, { seq });
     }
     if (method === 'GET' && path === '/api/sync/pull') {
       const since = Number(url.searchParams.get('since') ?? 0);
       if (!Number.isSafeInteger(since) || since < 0) throw new HttpError(400, 'since ungültig');
-      return send(res, 200, cloud.pull(device.id, since));
+      return send(res, 200, await cloud.pullFor(device, since));
     }
     if (method === 'GET' && path === '/api/sync/events') {
       // Server-Sent Events: meldet neue Änderungen, das Gerät holt sie dann per pull ab.
@@ -146,7 +200,12 @@ export function createApp({ store, cloud, devices, sharing }: Context): Server {
       return;
     }
 
-    if (method === 'GET' && path === '/api/assets') return send(res, 200, { names: listAssets(store.assets) });
+    // Team-Geräte bekommen nur Dateien, auf die Seiten im Team-Bereich verweisen.
+    const allowedAssets = () => (device.memberId ? visibleAssets(store, teamVisible(store)) : null);
+    if (method === 'GET' && path === '/api/assets') {
+      const allowed = allowedAssets();
+      return send(res, 200, { names: listAssets(store.assets).filter((n) => !allowed || allowed.has(n)) });
+    }
     const asset = /^\/api\/assets\/([^/]+)$/.exec(path);
     if (asset) {
       const name = decodeURIComponent(asset[1]);
@@ -156,6 +215,8 @@ export function createApp({ store, cloud, devices, sharing }: Context): Server {
         return send(res, 200, { ok: true });
       }
       if (method === 'GET') {
+        const allowed = allowedAssets();
+        if (allowed && !allowed.has(name)) throw new HttpError(404, 'Nicht gefunden');
         const file = assetPath(store.assets, name);
         if (!file) throw new HttpError(404, 'Nicht gefunden');
         const { size, stream } = assetStream(file);
@@ -172,7 +233,34 @@ export function createApp({ store, cloud, devices, sharing }: Context): Server {
       }
     }
 
+    if (team && path === '/api/team/members' && method === 'GET') {
+      owner();
+      return send(res, 200, { members: team.list() });
+    }
+    if (team && path === '/api/team/invites' && method === 'POST') {
+      owner();
+      return send(res, 200, team.createInvite());
+    }
+    const member = /^\/api\/team\/members\/([0-9a-f-]{36})(\/reset)?$/.exec(path);
+    if (team && member) {
+      owner();
+      if (method === 'DELETE' && !member[2]) {
+        if (!team.remove(member[1])) throw new HttpError(404, 'Mitglied nicht gefunden');
+        teamChanged();
+        return send(res, 200, { ok: true });
+      }
+      if (method === 'POST' && member[2]) {
+        try {
+          return send(res, 200, team.createReset(member[1]));
+        } catch (err) {
+          if (err instanceof TeamError) throw new HttpError(404, err.message);
+          throw err;
+        }
+      }
+    }
+
     if (method === 'POST' && path === '/api/admin/update') {
+      owner();
       // Neue Server-Version aus der App (signiert); danach Neustart durch systemd.
       const body = JSON.parse((await readBody(req, UPDATE_LIMIT)).toString('utf8')) as Record<string, unknown>;
       const text = (key: string) => (typeof body[key] === 'string' ? (body[key] as string) : '');
@@ -192,9 +280,16 @@ export function createApp({ store, cloud, devices, sharing }: Context): Server {
       return;
     }
 
-    if (method === 'GET' && path === '/api/devices') return send(res, 200, { devices: devices.list(), me: device.id });
-    if (method === 'POST' && path === '/api/pairing') return send(res, 200, devices.pairingCode());
+    if (method === 'GET' && path === '/api/devices') {
+      owner();
+      return send(res, 200, { devices: devices.list(), me: device.id });
+    }
+    if (method === 'POST' && path === '/api/pairing') {
+      owner();
+      return send(res, 200, devices.pairingCode());
+    }
     const one = /^\/api\/devices\/([0-9a-f-]{36})$/.exec(path);
+    if (one) owner();
     if (one && method === 'DELETE') {
       if (!devices.remove(one[1])) throw new HttpError(404, 'Gerät nicht gefunden');
       return send(res, 200, { ok: true });

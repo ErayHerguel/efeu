@@ -263,8 +263,23 @@ export class Replica {
       // Von außen nie anfassen, was hier „Nur auf diesem Computer“ liegt (auch keine Löschungen).
       const local = await this.localScope(null);
       changes = changes.filter((c) =>
-        c.kind === 'row' ? !local.skips(c.tbl, c.pk, c.cols ?? {}) : !local.pages.has(c.page),
+        c.kind === 'forget' ? true : c.kind === 'row' ? !local.skips(c.tbl, c.pk, c.cols ?? {}) : !local.pages.has(c.page),
       );
+      for (const change of changes) {
+        if (change.kind !== 'forget') continue;
+        // Nicht mehr sichtbar (z. B. aus dem Team genommen): hier entfernen, ohne Grabstein und ohne Protokoll.
+        const pages = JSON.stringify(change.pages);
+        const cats = JSON.stringify(change.categories);
+        statements.push(
+          { sql: 'DELETE FROM pages WHERE id IN (SELECT value FROM json_each(?))', params: [pages] },
+          { sql: 'DELETE FROM categories WHERE id IN (SELECT value FROM json_each(?))', params: [cats] },
+          { sql: "DELETE FROM sync_meta WHERE tbl = 'pages' AND pk IN (SELECT json_array(value) FROM json_each(?))", params: [pages] },
+          { sql: "DELETE FROM sync_meta WHERE tbl = 'categories' AND pk IN (SELECT json_array(value) FROM json_each(?))", params: [cats] },
+          { sql: 'DELETE FROM sync_docs WHERE page_id IN (SELECT value FROM json_each(?))', params: [pages] },
+          { sql: 'DELETE FROM sync_boards WHERE page_id IN (SELECT value FROM json_each(?))', params: [pages] },
+        );
+        applied.rows = true;
+      }
       for (const change of changes) {
         if (change.kind !== 'row') continue;
         const table = this.tables.get(change.tbl);

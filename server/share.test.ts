@@ -10,6 +10,7 @@ import { createApp } from './app';
 import { Devices } from './devices';
 import { startHost } from './host';
 import { Sharing } from './share';
+import { Team } from './team';
 import { openStore } from './store';
 
 const TOKEN = 'a'.repeat(64);
@@ -24,8 +25,9 @@ async function start() {
     INSERT INTO share_members (id, name, token, color, created_at, kind) VALUES ('m1', 'Lena', '${TOKEN}', '#30a46c', 1, 'person');
     INSERT INTO share_grants (member_id, page_id, role) VALUES ('m1', 'p1', 'edit');`);
   const sharing = new Sharing(store, web);
-  const cloud = await startHost(store, sharing);
-  const server = createApp({ store, cloud, devices: new Devices(store), sharing });
+  const team = new Team(store);
+  const { cloud, teamChanged } = await startHost(store, sharing, team);
+  const server = createApp({ store, cloud, devices: new Devices(store), sharing, team, teamChanged });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   closers.push(() => server.close());
   return { store, cloud, host: `127.0.0.1:${(server.address() as AddressInfo).port}` };

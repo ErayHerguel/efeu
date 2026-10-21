@@ -12,16 +12,26 @@ export interface Member {
   color: string;
   createdAt: number;
   kind: MemberKind;
+  /** Mitglied des Teams (sieht den ganzen Team-Bereich); sonst Gast bzw. eigenes Gerät */
+  teamRole: 'member' | null;
 }
 
 /** Gut unterscheidbare Farben für Cursor und Avatare. */
 export const MEMBER_COLORS = ['#e5484d', '#f76b15', '#ffc53d', '#30a46c', '#12a594', '#0090ff', '#6e56cf', '#d6409f'];
 
 export async function loadMembers(): Promise<Member[]> {
-  const rows = await db().select<{ id: string; name: string; token: string; color: string; created_at: number; kind: MemberKind }>(
-    'SELECT id, name, token, color, created_at, kind FROM share_members ORDER BY created_at',
+  const rows = await db().select<{ id: string; name: string; token: string; color: string; created_at: number; kind: MemberKind; team_role: 'member' | null }>(
+    'SELECT id, name, token, color, created_at, kind, team_role FROM share_members ORDER BY created_at',
   );
-  return rows.map((r) => ({ id: r.id, name: r.name, token: r.token, color: r.color, createdAt: Number(r.created_at), kind: r.kind }));
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    token: r.token,
+    color: r.color,
+    createdAt: Number(r.created_at),
+    kind: r.kind,
+    teamRole: r.team_role ?? null,
+  }));
 }
 
 export async function loadGrants(): Promise<Grant[]> {
@@ -42,8 +52,8 @@ export function newTopic(): string {
 
 export function insertMember(m: Member): Statement {
   return {
-    sql: 'INSERT INTO share_members (id, name, token, color, created_at, kind) VALUES (?, ?, ?, ?, ?, ?)',
-    params: [m.id, m.name, m.token, m.color, m.createdAt, m.kind],
+    sql: 'INSERT INTO share_members (id, name, token, color, created_at, kind, team_role) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    params: [m.id, m.name, m.token, m.color, m.createdAt, m.kind, m.teamRole],
   };
 }
 

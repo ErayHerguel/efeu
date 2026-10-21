@@ -8,6 +8,7 @@ import { useDatabases } from '../src/store/databases';
 import { usePages } from '../src/store/pages';
 import { Cloud } from './cloud';
 import type { Sharing } from './share';
+import type { Team } from './team';
 import type { Store } from './store';
 
 /**
@@ -15,7 +16,7 @@ import type { Store } from './store';
  * Was Gäste ändern, landet über die Schreib-Warteschlange in der Datenbank und von dort im Protokoll
  * für die eigenen Geräte; was die Geräte hochladen, wird in die Stores und offenen Dokumente übernommen.
  */
-export async function startHost(store: Store, sharing: Sharing): Promise<Cloud> {
+export async function startHost(store: Store, sharing: Sharing, team: Team): Promise<{ cloud: Cloud; teamChanged: () => void }> {
   setDriver(store);
   const hooks: ReplicaHooks = {
     openDoc: (page) => hubDocs()?.peek(page),
@@ -29,6 +30,7 @@ export async function startHost(store: Store, sharing: Sharing): Promise<Cloud> 
     await usePages.getState().load();
     const loaded = Object.keys(useDatabases.getState().data);
     await Promise.all(loaded.map((id) => useDatabases.getState().load(id).catch(() => undefined)));
+    team.cleanup();
     useHosting.setState({ members: await loadMembers(), grants: await loadGrants() });
     syncAccess();
     sharing.dropRemoved();
@@ -51,5 +53,14 @@ export async function startHost(store: Store, sharing: Sharing): Promise<Cloud> 
       void cloud!.drainLocal().catch((err) => console.error('Änderungen aus dem Browser', err));
     }, 300);
   });
-  return cloud;
+  const teamChanged = () => {
+    team.cleanup();
+    void (async () => {
+      useHosting.setState({ members: await loadMembers(), grants: await loadGrants() });
+      syncAccess();
+      sharing.dropRemoved();
+      await cloud!.drainLocal();
+    })().catch((err) => console.error('Team nachführen', err));
+  };
+  return { cloud, teamChanged };
 }

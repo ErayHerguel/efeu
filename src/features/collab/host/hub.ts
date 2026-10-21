@@ -17,6 +17,7 @@ import { searchPages } from '../../../db/search';
 import { importImageBlob } from '../../../lib/assets';
 import { useDatabases } from '../../../store/databases';
 import { canContain, usePages } from '../../../store/pages';
+import { rootOf } from '../../../lib/tree';
 import { useUI } from '../../../store/ui';
 import { createBoard } from '../../board/create';
 import { accessMap, grantsOf, guestPages, type Access } from '../access';
@@ -110,15 +111,21 @@ export const hubBoards = () => boards;
 const memberOf = (memberId: string) => useHosting.getState().members.find((m) => m.id === memberId);
 
 const isDevice = (memberId: string) => memberOf(memberId)?.kind === 'device';
+const isTeam = (memberId: string) => memberOf(memberId)?.teamRole === 'member';
 
 function accessOf(memberId: string): Map<string, Access> {
   let access = accessCache.get(memberId);
   if (!access) {
     const pages = usePages.getState().pages;
-    // Eigene Geräte sehen und bearbeiten alles außerhalb des Papierkorbs.
+    const live = Object.values(pages).filter((p) => p.deletedAt === null);
+    // Eigene Geräte sehen und bearbeiten alles außerhalb des Papierkorbs, Team-Mitglieder den Team-Bereich
+    // (dazu einzeln freigegebene Seiten).
     access = isDevice(memberId)
-      ? new Map(Object.values(pages).filter((p) => p.deletedAt === null).map((p) => [p.id, 'edit' as const]))
+      ? new Map(live.map((p) => [p.id, 'edit' as const]))
       : accessMap(pages, grantsOf(useHosting.getState().grants, memberId));
+    if (isTeam(memberId)) {
+      for (const p of live) if (pages[rootOf(pages, p.id)]?.space === 'team') access.set(p.id, 'edit');
+    }
     accessCache.set(memberId, access);
   }
   return access;
@@ -127,7 +134,7 @@ function accessOf(memberId: string): Map<string, Access> {
 /** Ziel einer neuen oder verschobenen Seite: oberste Ebene nur für eigene Geräte. */
 function requireParent(c: Connection, parentId: string | null) {
   if (parentId === null) {
-    if (!isDevice(c.memberId)) throw new HubError('Kein Zugriff auf die oberste Ebene');
+    if (!isDevice(c.memberId) && !isTeam(c.memberId)) throw new HubError('Kein Zugriff auf die oberste Ebene');
     return;
   }
   requireAccess(c, parentId, 'edit');
@@ -404,17 +411,24 @@ async function handle(c: Connection, req: Request): Promise<unknown> {
     case 'page.create': {
       requireParent(c, req.parentId);
       if (req.parentId !== null && !canContain(pages[req.parentId]?.type, req.type)) throw new HubError('Hier kann nichts angelegt werden');
+      const intoTeam = async (id: string) => {
+        if (req.parentId === null && isTeam(c.memberId)) await usePages.getState().moveToGroup(id, { space: 'team', categoryId: null }, Number.MAX_SAFE_INTEGER);
+      };
       if (req.type === 'database') {
         const id = await useDatabases.getState().createDatabase(req.parentId);
+        await intoTeam(id);
         if (req.title) usePages.getState().update(id, { title: req.title });
         return id;
       }
       if (req.type === 'board') {
         const id = await createBoard(req.parentId);
+        await intoTeam(id);
         if (req.title) usePages.getState().update(id, { title: req.title });
         return id;
       }
-      return usePages.getState().create({ parentId: req.parentId, title: req.title, index: req.index ?? undefined });
+      // Team-Mitglieder legen oberste Seiten im Team-Bereich an.
+      const space = req.parentId === null && isTeam(c.memberId) ? ('team' as const) : undefined;
+      return usePages.getState().create({ parentId: req.parentId, title: req.title, index: req.index ?? undefined, space });
     }
     case 'page.update':
       requireAccess(c, req.id, 'edit');

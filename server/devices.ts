@@ -4,6 +4,8 @@ import type { Store } from './store';
 export interface Device {
   id: string;
   name: string;
+  /** Team-Mitglied, dem das Gerät gehört; null = Inhaber der Cloud */
+  memberId: string | null;
   createdAt: number;
   lastSeen: number | null;
 }
@@ -21,12 +23,12 @@ export class Devices {
   constructor(private store: Store) {}
 
   /** Neues Gerät anlegen; der Schlüssel wird nur dieses eine Mal herausgegeben. */
-  add(name: string): { device: Device; token: string } {
+  add(name: string, memberId: string | null = null): { device: Device; token: string } {
     const token = randomBytes(32).toString('hex');
-    const device: Device = { id: randomUUID(), name: name.trim().slice(0, 80) || 'Gerät', createdAt: Date.now(), lastSeen: null };
+    const device: Device = { id: randomUUID(), name: name.trim().slice(0, 80) || 'Gerät', memberId, createdAt: Date.now(), lastSeen: null };
     this.store.raw
-      .prepare('INSERT INTO cloud_devices (id, name, token_hash, created_at) VALUES (?, ?, ?, ?)')
-      .run(device.id, device.name, hash(token), device.createdAt);
+      .prepare('INSERT INTO cloud_devices (id, name, token_hash, created_at, member_id) VALUES (?, ?, ?, ?, ?)')
+      .run(device.id, device.name, hash(token), device.createdAt, memberId);
     return { device, token };
   }
 
@@ -34,25 +36,26 @@ export class Devices {
   verify(token: string | null): Device | null {
     if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
     const row = this.store.raw
-      .prepare('SELECT id, name, created_at, last_seen FROM cloud_devices WHERE token_hash = ?')
-      .get(hash(token)) as { id: string; name: string; created_at: number; last_seen: number | null } | undefined;
+      .prepare('SELECT id, name, created_at, last_seen, member_id FROM cloud_devices WHERE token_hash = ?')
+      .get(hash(token)) as { id: string; name: string; created_at: number; last_seen: number | null; member_id: string | null } | undefined;
     if (!row) return null;
     const now = Date.now();
     // Zuletzt gesehen höchstens minütlich schreiben.
     if (!row.last_seen || now - Number(row.last_seen) > 60_000) {
       this.store.raw.prepare('UPDATE cloud_devices SET last_seen = ? WHERE id = ?').run(now, row.id);
     }
-    return { id: row.id, name: row.name, createdAt: Number(row.created_at), lastSeen: now };
+    return { id: row.id, name: row.name, memberId: row.member_id, createdAt: Number(row.created_at), lastSeen: now };
   }
 
   list(): Device[] {
-    const rows = this.store.raw.prepare('SELECT id, name, created_at, last_seen FROM cloud_devices ORDER BY created_at').all() as {
+    // Nur die Geräte des Inhabers; Geräte von Team-Mitgliedern verwaltet das Team.
+    const rows = this.store.raw.prepare('SELECT id, name, created_at, last_seen FROM cloud_devices WHERE member_id IS NULL ORDER BY created_at').all() as {
       id: string;
       name: string;
       created_at: number;
       last_seen: number | null;
     }[];
-    return rows.map((r) => ({ id: r.id, name: r.name, createdAt: Number(r.created_at), lastSeen: r.last_seen === null ? null : Number(r.last_seen) }));
+    return rows.map((r) => ({ id: r.id, name: r.name, memberId: null, createdAt: Number(r.created_at), lastSeen: r.last_seen === null ? null : Number(r.last_seen) }));
   }
 
   remove(id: string): boolean {

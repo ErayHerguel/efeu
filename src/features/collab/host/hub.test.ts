@@ -73,8 +73,8 @@ beforeEach(async () => {
   pages = { projekt, plan, privat, aufgaben };
   useHosting.setState({
     members: [
-      { id: MEMBER, name: 'Mia', token: 'x'.repeat(64), color: '#e5484d', createdAt: 0, kind: 'person' },
-      { id: DEVICE, name: 'iPhone', token: 'y'.repeat(64), color: '#0090ff', createdAt: 0, kind: 'device' },
+      { id: MEMBER, name: 'Mia', token: 'x'.repeat(64), color: '#e5484d', createdAt: 0, kind: 'person', teamRole: null },
+      { id: DEVICE, name: 'iPhone', token: 'y'.repeat(64), color: '#0090ff', createdAt: 0, kind: 'device', teamRole: null },
     ],
     grants: [{ memberId: MEMBER, pageId: projekt, role: 'edit' }],
     hostName: 'Eray',

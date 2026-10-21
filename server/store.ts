@@ -26,6 +26,12 @@ CREATE TABLE IF NOT EXISTS cloud_pairing (
   code_hash TEXT PRIMARY KEY,
   expires_at INTEGER NOT NULL
 );
+-- Was ein Team-Gerät beim letzten Abruf sehen durfte (zum Nachliefern bzw. Entfernen bei Änderungen).
+CREATE TABLE IF NOT EXISTS cloud_scope (
+  device_id TEXT PRIMARY KEY,
+  pages TEXT NOT NULL,
+  categories TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS cloud_meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -50,6 +56,9 @@ export function openStore(dir: string): Store {
   raw.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
   migrate(raw);
   raw.exec(SERVER_SCHEMA);
+  // Spätere Ergänzungen an Server-Tabellen (CREATE TABLE IF NOT EXISTS legt keine neuen Spalten an).
+  const deviceColumns = (raw.prepare("SELECT name FROM pragma_table_info('cloud_devices')").all() as { name: string }[]).map((c) => c.name);
+  if (!deviceColumns.includes('member_id')) raw.exec('ALTER TABLE cloud_devices ADD COLUMN member_id TEXT');
   return {
     raw,
     dir,

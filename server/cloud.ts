@@ -1,6 +1,7 @@
 import type { SqlValue } from '../src/db/driver';
 import { Replica, type Applied, type ReplicaHooks } from '../src/sync/replica';
-import { loadTables } from '../src/sync/tables';
+import { loadTables, PAGE_COLUMN } from '../src/sync/tables';
+import { allowedFrom, teamVisible, visibleTo, type Visible } from './scope';
 import type { BoardElement, Change } from '../src/sync/types';
 import { transaction, type Store } from './store';
 
@@ -90,9 +91,15 @@ export class Cloud {
   }
 
   /** Änderungen eines Geräts übernehmen und für die anderen bereitstellen. */
-  push(origin: string, changes: unknown[]): Promise<number> {
+  push(origin: string, changes: unknown[], memberId: string | null = null): Promise<number> {
     return this.serial(async () => {
-      const valid = changes.filter(validChange);
+      let valid = changes.filter(validChange);
+      if (memberId) {
+        // Team-Mitglieder dürfen nur im Team-Bereich ändern; alles andere wird verworfen.
+        const visible = teamVisible(this.store);
+        const created = new Set<string>();
+        valid = valid.filter((c) => allowedFrom(this.store, c, visible, created));
+      }
       const applied = await this.replica.apply(valid);
       const seq = this.append(origin, valid);
       this.onApplied(applied);
@@ -126,6 +133,38 @@ export class Cloud {
     };
   }
 
+  /**
+   * Abruf eines Geräts. Geräte von Team-Mitgliedern bekommen nur den Team-Bereich: Was neu sichtbar ist,
+   * wird als Schnappschuss nachgeliefert, was nicht mehr sichtbar ist, mit „forget“ entfernt.
+   */
+  async pullFor(device: { id: string; memberId: string | null }, since: number): Promise<{ changes: Change[]; next: number; more: boolean }> {
+    const result = this.pull(device.id, since);
+    if (!device.memberId) return result;
+    const now = teamVisible(this.store);
+    const row = this.store.raw.prepare('SELECT pages, categories FROM cloud_scope WHERE device_id = ?').get(device.id) as
+      | { pages: string; categories: string }
+      | undefined;
+    const before: Visible = {
+      pages: new Set(row ? (JSON.parse(row.pages) as string[]) : []),
+      categories: new Set(row ? (JSON.parse(row.categories) as string[]) : []),
+    };
+    const fresh: Visible = {
+      pages: new Set([...now.pages].filter((id) => !before.pages.has(id))),
+      categories: new Set([...now.categories].filter((id) => !before.categories.has(id))),
+    };
+    const gone = {
+      pages: [...before.pages].filter((id) => !now.pages.has(id)),
+      categories: [...before.categories].filter((id) => !now.categories.has(id)),
+    };
+    const extra: Change[] = [];
+    if (fresh.pages.size || fresh.categories.size) extra.push(...(await this.snapshot(fresh)));
+    if (gone.pages.length || gone.categories.length) extra.push({ kind: 'forget', pages: gone.pages, categories: gone.categories });
+    this.store.raw
+      .prepare('INSERT INTO cloud_scope (device_id, pages, categories) VALUES (?, ?, ?) ON CONFLICT(device_id) DO UPDATE SET pages = excluded.pages, categories = excluded.categories')
+      .run(device.id, JSON.stringify([...now.pages]), JSON.stringify([...now.categories]));
+    return { ...result, changes: [...extra, ...result.changes.filter((c) => visibleTo(this.store, c, now, before))] };
+  }
+
   compactIfLarge(): Promise<void> {
     const { n } = this.store.raw.prepare('SELECT count(*) AS n FROM cloud_log').get() as { n: number };
     return Number(n) > COMPACT_AT ? this.compact() : Promise.resolve();
@@ -148,7 +187,8 @@ export class Cloud {
     });
   }
 
-  private async snapshot(): Promise<Change[]> {
+  /** Aktueller Stand als Änderungen; mit `only` nur diese Seiten und Kategorien (für Team-Geräte). */
+  private async snapshot(only?: Visible): Promise<Change[]> {
     const raw = this.store.raw;
     const changes: Change[] = [];
     const meta = new Map<string, Map<string, string>>();
@@ -159,8 +199,11 @@ export class Cloud {
     }
     const tables = await loadTables(this.store);
     for (const t of tables.values()) {
+      const scopeColumn = t.name === 'categories' ? 'id' : PAGE_COLUMN[t.name];
+      if (only && !scopeColumn && t.name !== 'cover_credits') continue;
       const rows = raw.prepare(`SELECT ${t.columns.map((c) => `"${c}"`).join(', ')} FROM "${t.name}"`).all() as Record<string, SqlValue>[];
       for (const row of rows) {
+        if (only && scopeColumn && !(t.name === 'categories' ? only.categories : only.pages).has(String(row[scopeColumn]))) continue;
         const pk = JSON.stringify(t.key.map((k) => row[k]));
         const hlcs = meta.get(`${t.name}\u0000${pk}`);
         // Spalten mit gleichem Zeitstempel zusammenfassen.
@@ -182,18 +225,21 @@ export class Cloud {
     }
     // Endgültig Gelöschtes bleibt als Grabstein, damit alte Stände es nicht zurückbringen.
     for (const [key, cols] of meta) {
+      if (only) break;
       const tomb = cols.get('');
       if (!tomb) continue;
       const [tbl, pk] = key.split('\u0000');
       changes.push({ kind: 'row', tbl, pk, cols: null, hlc: tomb });
     }
     for (const d of raw.prepare('SELECT page_id, state FROM sync_docs').all() as { page_id: string; state: string }[]) {
+      if (only && !only.pages.has(d.page_id)) continue;
       changes.push({ kind: 'doc', page: d.page_id, update: d.state });
     }
     const boards = raw
       .prepare('SELECT b.page_id, b.scene, s.background_hlc FROM boards b LEFT JOIN sync_boards s ON s.page_id = b.page_id')
       .all() as { page_id: string; scene: string; background_hlc: string | null }[];
     for (const b of boards) {
+      if (only && !only.pages.has(b.page_id)) continue;
       const scene = JSON.parse(b.scene) as { elements?: BoardElement[]; files?: Record<string, { asset: string; mimeType: string }>; appState?: { viewBackgroundColor?: string } };
       const hlc = b.background_hlc || `${ANCIENT}snapshot`;
       changes.push({
