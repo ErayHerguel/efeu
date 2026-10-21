@@ -24,13 +24,14 @@ async function start() {
   store.raw.exec(`INSERT INTO pages (id, workspace_id, type, title, created_at, updated_at) VALUES ('p1', 'default', 'page', 'Geteilt', 1, 1), ('p2', 'default', 'page', 'Privat', 1, 1);
     INSERT INTO share_members (id, name, token, color, created_at, kind) VALUES ('m1', 'Lena', '${TOKEN}', '#30a46c', 1, 'person');
     INSERT INTO share_grants (member_id, page_id, role) VALUES ('m1', 'p1', 'edit');`);
-  const sharing = new Sharing(store, web);
+  const devices = new Devices(store);
+  const sharing = new Sharing(store, web, devices);
   const team = new Team(store);
   const { cloud, teamChanged } = await startHost(store, sharing, team);
-  const server = createApp({ store, cloud, devices: new Devices(store), sharing, team, teamChanged });
+  const server = createApp({ store, cloud, devices, sharing, team, teamChanged });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   closers.push(() => server.close());
-  return { store, cloud, host: `127.0.0.1:${(server.address() as AddressInfo).port}` };
+  return { store, cloud, devices, host: `127.0.0.1:${(server.address() as AddressInfo).port}` };
 }
 
 describe('Teilen über die Cloud', () => {
@@ -86,4 +87,26 @@ describe('Teilen über die Cloud', () => {
     expect(messages.some((m) => m.t === 'pages' && JSON.stringify(m).includes('Vom Mac'))).toBe(true);
     ws.close();
   });
+
+  it('lässt die efeu-App des Inhabers mit ihrem Geräteschlüssel live mitarbeiten', async () => {
+    const { devices, host } = await start();
+    const { token } = devices.add('Mac');
+    expect(await new Promise((resolve) => {
+      const bad = new WebSocket(`ws://${host}/api/ws`, { headers: { authorization: `Bearer ${'0'.repeat(64)}`, origin: `http://${host}` } });
+      bad.on('error', () => resolve('abgelehnt'));
+      bad.on('open', () => resolve('offen'));
+    })).toBe('abgelehnt');
+    const ws = new WebSocket(`ws://${host}/api/ws?name=Eray`, { headers: { authorization: `Bearer ${token}`, origin: `http://${host}` } });
+    const messages: Record<string, unknown>[] = [];
+    ws.on('message', (data) => messages.push(JSON.parse(String(data))));
+    await new Promise((resolve) => ws.on('open', resolve));
+    ws.send(JSON.stringify({ t: 'req', id: 1, req: { op: 'hello' } }));
+    for (let i = 0; i < 100 && !messages.some((m) => m.t === 'res'); i++) await new Promise((r) => setTimeout(r, 20));
+    const welcome = messages.find((m) => m.t === 'res') as { ok: boolean; value: { me: { name: string; kind: string }; pages: { id: string }[] } };
+    expect(welcome.ok).toBe(true);
+    expect(welcome.value.me).toMatchObject({ name: 'Eray', kind: 'device' });
+    expect(welcome.value.pages.map((p) => p.id).sort()).toEqual(['p1', 'p2']);
+    ws.close();
+  });
 });
+

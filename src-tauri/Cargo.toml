@@ -37,6 +37,7 @@ base64 = "0.22"
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
 cpal = "0.18"
 tar = "0.4"
+tokio-tungstenite = { version = "0.29.0", default-features = false, features = ["connect", "rustls-tls-native-roots"] }
 russh = { version = "0.64", default-features = false, features = ["ring", "flate2"] }
 
 [profile.release]

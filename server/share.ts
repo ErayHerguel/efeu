@@ -4,7 +4,9 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { extname, join, normalize } from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
-import type { HubTransport } from '../src/features/collab/host/hub';
+import { registerVirtualMember, type HubTransport } from '../src/features/collab/host/hub';
+import { HOST_COLOR } from '../src/features/collab/host/hosting';
+import type { Devices } from './devices';
 import { assetPath, assetStream, fileExt, imageExt, MIME, storeBytes } from './assets';
 import type { Store } from './store';
 
@@ -77,6 +79,7 @@ export class Sharing {
   constructor(
     private store: Store,
     private webDir: string | null,
+    private devices?: Devices,
   ) {
     const indexPath = webDir && join(webDir, 'index.html');
     if (indexPath && existsSync(indexPath)) {
@@ -122,7 +125,9 @@ export class Sharing {
 
   /** Verbindungen von Personen schließen, deren Zugang entfernt wurde. */
   dropRemoved() {
-    for (const socket of this.sockets.values()) if (!this.member(socket.memberId)) socket.ws.close();
+    for (const socket of this.sockets.values()) {
+      if (!socket.memberId.startsWith('owner-') && !this.member(socket.memberId)) socket.ws.close();
+    }
     for (const [session, memberId] of this.sessions) if (!this.member(memberId)) this.sessions.delete(session);
   }
 
@@ -250,12 +255,23 @@ export class Sharing {
       socket.write(`HTTP/1.1 ${status}\r\nConnection: close\r\n\r\n`);
       socket.destroy();
     };
-    const memberId = this.sessionMember(req);
-    if (!memberId) return deny('401 Unauthorized');
     // Schutz vor fremden Seiten, die im Namen eines angemeldeten Gastes eine Verbindung öffnen.
     const origin = String(req.headers.origin ?? '');
     if (origin.replace(/^https?:\/\//, '') !== hostOf(req)) return deny('403 Forbidden');
-    if (!this.member(memberId)) return deny('401 Unauthorized');
+    let memberId = this.sessionMember(req);
+    // Die efeu-App meldet sich mit ihrem Geräteschlüssel an: als Team-Mitglied oder als Inhaber.
+    const bearer = String(req.headers.authorization ?? '');
+    if (!memberId && bearer.startsWith('Bearer ') && this.devices) {
+      const device = this.devices.verify(bearer.slice(7).trim());
+      if (device?.memberId) memberId = device.memberId;
+      else if (device) {
+        const name = new URL(req.url ?? '/', 'http://localhost').searchParams.get('name')?.trim().slice(0, 80) || device.name;
+        memberId = `owner-${device.id}`;
+        registerVirtualMember({ id: memberId, name, token: '', color: HOST_COLOR, createdAt: device.createdAt, kind: 'device', teamRole: null });
+      }
+    }
+    if (!memberId) return deny('401 Unauthorized');
+    if (!memberId.startsWith('owner-') && !this.member(memberId)) return deny('401 Unauthorized');
     this.wss.handleUpgrade(req, socket, head, (ws) => {
       const conn = this.nextConn++;
       this.sockets.set(conn, { memberId, ws });

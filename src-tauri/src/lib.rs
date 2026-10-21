@@ -141,6 +141,7 @@ pub fn run() {
         .manage(lecture::Lecture::new())
         .manage(share::Share::new())
         .manage(cloud::Cloud::new())
+        .manage(cloud::live::Live::new())
         .manage(started)
         .setup(|app| {
             paths::ensure_dirs(app.handle())?;
@@ -177,6 +178,9 @@ pub fn run() {
             cloud::cloud_forget,
             cloud::cloud_update_server,
             cloud::cloud_events,
+            cloud::live::cloud_live_open,
+            cloud::live::cloud_live_send,
+            cloud::live::cloud_live_close,
             cloud::setup::cloud_setup,
             cloud::setup::cloud_setup_cancel,
             cloud::device_name,

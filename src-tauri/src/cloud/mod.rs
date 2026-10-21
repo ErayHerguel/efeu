@@ -5,6 +5,7 @@
 //! meldet der Server über Server-Sent Events, die als Ereignis `cloud:changed` weitergereicht werden;
 //! abholen und anwenden macht die Oberfläche (src/sync).
 
+pub mod live;
 pub mod setup;
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -67,7 +68,7 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Sen
 }
 
 /// Gespeicherte Verbindung (einmal pro Sitzung aus dem Schlüsselbund gelesen).
-async fn connection(app: &AppHandle) -> Result<Option<Connection>, String> {
+pub(crate) async fn connection(app: &AppHandle) -> Result<Option<Connection>, String> {
     let cloud = app.state::<Cloud>();
     if let Some(cached) = cloud.connection.lock().unwrap().clone() {
         return Ok(cached);

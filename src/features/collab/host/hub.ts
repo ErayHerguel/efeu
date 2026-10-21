@@ -44,6 +44,7 @@ import type * as Y from 'yjs';
 import { BoardHub } from './boards';
 import { DocHub } from './docs';
 import { HOST_COLOR, useHosting } from './hosting';
+import type { Member } from '../../../db/share';
 
 /** Fehler, deren Text der Gast sehen darf. */
 class HubError extends Error {}
@@ -111,7 +112,16 @@ function send(targets: number[], message: ServerMessage) {
 export const hubDocs = () => docs;
 export const hubBoards = () => boards;
 
-const memberOf = (memberId: string) => useHosting.getState().members.find((m) => m.id === memberId);
+/** Personen ohne Eintrag in den Freigaben, z. B. die Geräte des Inhabers über die Cloud. */
+const virtualMembers = new Map<string, Member>();
+
+/** Für den Cloud-Server: ein Gerät des Inhabers als Person mit vollem Zugriff anmelden. */
+export function registerVirtualMember(member: Member) {
+  virtualMembers.set(member.id, member);
+  accessCache.delete(member.id);
+}
+
+const memberOf = (memberId: string) => virtualMembers.get(memberId) ?? useHosting.getState().members.find((m) => m.id === memberId);
 
 const isDevice = (memberId: string) => memberOf(memberId)?.kind === 'device';
 const isTeam = (memberId: string) => memberOf(memberId)?.teamRole === 'member';

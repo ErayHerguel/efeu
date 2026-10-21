@@ -13,7 +13,8 @@ import { Replica } from '../../sync/replica';
 import type { Change } from '../../sync/types';
 import { BoardHub } from '../collab/host/boards';
 import { DocHub } from '../collab/host/docs';
-import { useHosting } from '../collab/host/hosting';
+import { HOST_COLOR, useHosting } from '../collab/host/hosting';
+import { live } from './live';
 import { useCollab } from '../collab/sources';
 
 export type CloudPhase = 'off' | 'connecting' | 'synced' | 'syncing' | 'offline' | 'error';
@@ -99,6 +100,7 @@ async function runSync() {
     if (session !== s) return;
     if (report.applied.rows || report.applied.docs.size || report.applied.boards.size) await refresh(report.applied.rows);
     useCloud.setState({ phase: 'synced', error: null, lastSync: Date.now() });
+    live.retry();
   } catch (err) {
     if (session !== s) return;
     const message = err instanceof Error ? err.message : String(err);
@@ -117,11 +119,31 @@ async function refresh(rows: boolean) {
   await Promise.all(loaded.map((id) => useDatabases.getState().load(id).catch(() => undefined)));
 }
 
+const liveRefs = new Map<string, number>();
+
 function installSources(docs: DocHub, boards: BoardHub) {
-  const user = { name: 'Ich', color: '#2f6fde' };
   useCollab.setState((s) => ({
     epoch: s.epoch + 1,
-    docs: async (pageId) => ({ ...(await docs.acquire(pageId)), user }),
+    docs: async (pageId) => {
+      const binding = await docs.acquire(pageId);
+      // Live mit den anderen: Tippen und Cursor sofort, nicht erst beim nächsten Abgleich.
+      liveRefs.set(pageId, (liveRefs.get(pageId) ?? 0) + 1);
+      live.attach(pageId, binding.doc, binding.awareness);
+      const me = live.me;
+      const user = { name: me?.name ?? (useHosting.getState().hostName || 'Ich'), color: me?.color ?? HOST_COLOR };
+      return {
+        ...binding,
+        user,
+        release: () => {
+          const left = (liveRefs.get(pageId) ?? 1) - 1;
+          if (left <= 0) {
+            liveRefs.delete(pageId);
+            live.detach(pageId);
+          } else liveRefs.set(pageId, left);
+          binding.release();
+        },
+      };
+    },
     boards: async (pageId, events) => {
       const attached = await boards.attach(pageId, events);
       return {
@@ -184,6 +206,8 @@ export async function startCloud(): Promise<void> {
   // Teilen läuft jetzt über den Server: Einladungslinks zeigen auf ihn, und er ist immer erreichbar.
   if (!member) useHosting.setState({ live: true, status: { phase: 'online', url: status.url, localUrl: null, error: null } });
   await invoke('cloud_events');
+  const name = useHosting.getState().hostName !== 'Gastgeber' ? useHosting.getState().hostName : await invoke<string>('device_name');
+  await live.start(name).catch((err) => console.warn('Live-Verbindung', err));
   await runSync();
   if (!member) void updateServerIfOlder();
 }
@@ -231,6 +255,7 @@ async function stopSession() {
   session = null;
   if (timer) clearTimeout(timer);
   for (const off of s.cleanup) off();
+  await live.stop();
   await flush();
   useCollab.setState((st) => ({ docs: null, boards: null, epoch: st.epoch + 1 }));
   await new Promise((resolve) => setTimeout(resolve, 50));

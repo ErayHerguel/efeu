@@ -47,7 +47,7 @@ async function main() {
     return;
   }
 
-  const sharing = new Sharing(store, web);
+  const sharing = new Sharing(store, web, devices);
   const team = new Team(store);
   const { cloud, teamChanged } = await startHost(store, sharing, team);
   const server = createApp({ store, cloud, devices, sharing, team, teamChanged });
