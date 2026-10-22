@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Copy, CopyPlus, History, Layers, LayoutTemplate, House, MessageSquare, MoreHorizontal, MoveHorizontal, Mic, PanelLeft, Printer, Sparkles, Star, Trash2 } from 'lucide-react';
 import { useAiReady } from '../ai/store';
 import { openAiBar } from '../ai/edit/session';
+import { generateCards } from '../ai/cards';
 import { suggestTitle } from '../ai/title';
 import { openLectureStart } from '../lecture/LectureUI';
 import { useLecture } from '../lecture/lecture';
@@ -156,7 +157,12 @@ export function TopBar({ pageId }: { pageId: string | null }) {
                     { label: 'Als Vorlage speichern', icon: LayoutTemplate, onSelect: () => void saveAsTemplate(page.id) },
                   ]),
               ...(aiReady && editable
-                ? [{ label: 'KI: Titel und Icon vorschlagen', icon: Sparkles, onSelect: () => void suggestTitle(page.id) }]
+                ? [
+                    { label: 'KI: Titel und Icon vorschlagen', icon: Sparkles, onSelect: () => void suggestTitle(page.id) },
+                    ...(page.type === 'page'
+                      ? [{ label: 'KI: Karteikarten erstellen', icon: Sparkles, onSelect: () => void generateCards(page.id) }]
+                      : []),
+                  ]
                 : []),
               ...(page.type === 'page' && !GUEST
                 ? [

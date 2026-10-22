@@ -11,6 +11,7 @@ import { checkForUpdate, toggleAutoUpdate } from './update/updater';
 import { backupNow, exportCurrentPage, exportWorkspace, importFolder, importMarkdownFiles, importNotion } from './transfer/transfer';
 import { usePages, type Group } from '../store/pages';
 import { startLearning } from './cards/learn';
+import { generateCards } from './ai/cards';
 import { useUI, type Theme } from '../store/ui';
 import { quitApp } from './lifecycle';
 import { GUEST } from '../lib/mode';
@@ -503,6 +504,16 @@ export const actions: AppAction[] = [
     group: 'KI',
     when: () => aiUsable() && getActiveEditor() !== null,
     run: () => withEditor((editor) => startWrite(editor, 'tasks')),
+  },
+  {
+    id: 'ai.cards',
+    label: 'KI: Karteikarten aus dieser Seite erstellen',
+    group: 'KI',
+    when: () => aiUsable() && currentPage()?.type === 'page' && getActiveEditor()?.isEditable === true,
+    run: () => {
+      const page = currentPage();
+      if (page) void generateCards(page.id);
+    },
   },
   {
     id: 'ai.pageToBoard',
