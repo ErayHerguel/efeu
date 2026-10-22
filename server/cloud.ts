@@ -239,6 +239,8 @@ export class Cloud {
     for (const t of tables.values()) {
       const scopeColumn = t.name === 'categories' ? 'id' : PAGE_COLUMN[t.name];
       if (only && !scopeColumn && t.name !== 'cover_credits') continue;
+      // Persönliches (Lernstand) bekommen Team-Geräte nie, auch nicht im Schnappschuss.
+      if (only && t.name === 'card_reviews') continue;
       const rows = raw.prepare(`SELECT ${t.columns.map((c) => `"${c}"`).join(', ')} FROM "${t.name}"`).all() as Record<string, SqlValue>[];
       for (const row of rows) {
         if (only && scopeColumn && !(t.name === 'categories' ? only.categories : only.pages).has(String(row[scopeColumn]))) continue;

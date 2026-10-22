@@ -10,6 +10,7 @@ import { copyPageMarkdown, printPage } from './share/share';
 import { checkForUpdate, toggleAutoUpdate } from './update/updater';
 import { backupNow, exportCurrentPage, exportWorkspace, importFolder, importMarkdownFiles, importNotion } from './transfer/transfer';
 import { usePages, type Group } from '../store/pages';
+import { startLearning } from './cards/learn';
 import { useUI, type Theme } from '../store/ui';
 import { quitApp } from './lifecycle';
 import { GUEST } from '../lib/mode';
@@ -161,6 +162,15 @@ export const actions: AppAction[] = [
     keys: 'Mod+Shift+D',
     menu: 'go',
     run: openToday,
+  },
+  {
+    id: 'cards.learn',
+    label: 'Karteikarten lernen',
+    group: 'Seite',
+    keys: 'Mod+Alt+L',
+    menu: 'go',
+    when: () => !GUEST,
+    run: () => startLearning(null),
   },
   {
     id: 'quick.open',

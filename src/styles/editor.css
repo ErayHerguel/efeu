@@ -745,3 +745,10 @@ div.block-handle-button {
 .efeu-editor .mention.is-selected {
   outline: 2px solid var(--c-accent);
 }
+
+/* Karteikarte im Text: „Frage :: Antwort“ */
+.efeu-editor p.card-line {
+  border-left: 2px solid var(--c-accent-soft);
+  padding-left: 10px;
+  margin-left: -12px;
+}

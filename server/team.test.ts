@@ -199,5 +199,34 @@ describe('Team', () => {
     await lena.call('/api/notifications/read', { method: 'POST', body: JSON.stringify({ ids: 'all' }) });
     expect((await list())[0].read).toBe(true);
   });
+
+  it('gleicht den Lernstand nur mit den eigenen Geräten ab, nie mit dem Team', async () => {
+    const { url, devices } = await start();
+    const mac = device(url, devices.add('Mac').token);
+    const laptop = device(url, devices.add('Laptop').token);
+    await mac.replica.enable('mac');
+    await laptop.replica.enable('laptop');
+    const { code } = (await (await mac.call('/api/team/invites', { method: 'POST' })).json()) as { code: string };
+    const { deviceToken } = (await (await post(url, '/api/team/join', { code, name: 'Lena', login: 'lena', password: 'ganz-geheim-123', device: 'Lenas Mac' })).json()) as {
+      deviceToken: string;
+    };
+    const lena = device(url, deviceToken);
+    await lena.replica.enable('lena');
+    await mac.driver.tx([
+      page('t', 'Vokabeln', 'team'),
+      { sql: "INSERT INTO card_reviews (card_id, page_id, due, interval, ease, reps, lapses, updated_at) VALUES ('k1', 't', 5, 1, 2.5, 1, 0, 1)" },
+    ]);
+    await mac.client.sync();
+    await laptop.client.sync();
+    await lena.client.sync();
+    expect(await laptop.driver.select('SELECT card_id FROM card_reviews')).toEqual([{ card_id: 'k1' }]);
+    expect(await lena.titles()).toEqual(['Vokabeln']);
+    expect(await lena.driver.select('SELECT * FROM card_reviews')).toEqual([]);
+    // Lenas eigener Lernstand bleibt bei ihr.
+    await lena.driver.tx([{ sql: "INSERT INTO card_reviews (card_id, page_id, due, interval, ease, reps, lapses, updated_at) VALUES ('k1', 't', 9, 4, 2.5, 2, 0, 2)" }]);
+    await lena.client.sync();
+    await mac.client.sync();
+    expect(await mac.driver.select('SELECT due FROM card_reviews')).toEqual([{ due: 5 }]);
+  });
 });
 

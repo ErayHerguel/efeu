@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Copy, CopyPlus, History, LayoutTemplate, House, MessageSquare, MoreHorizontal, MoveHorizontal, Mic, PanelLeft, Printer, Sparkles, Star, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, CopyPlus, History, Layers, LayoutTemplate, House, MessageSquare, MoreHorizontal, MoveHorizontal, Mic, PanelLeft, Printer, Sparkles, Star, Trash2 } from 'lucide-react';
 import { useAiReady } from '../ai/store';
 import { openAiBar } from '../ai/edit/session';
 import { suggestTitle } from '../ai/title';
@@ -17,6 +17,7 @@ import { ConnectionIndicator } from '../collab/guest/GuestIdentity';
 import { useGuest } from '../collab/guest/session';
 import { CloudIndicator } from '../cloud/CloudSettings';
 import { useCloud } from '../cloud/cloud';
+import { startLearning } from '../cards/learn';
 import { PageShareButton } from '../collab/host/PageShare';
 import { PagePresence } from '../collab/presence';
 import { useCanEdit } from '../collab/sources';
@@ -158,7 +159,10 @@ export function TopBar({ pageId }: { pageId: string | null }) {
                 ? [{ label: 'KI: Titel und Icon vorschlagen', icon: Sparkles, onSelect: () => void suggestTitle(page.id) }]
                 : []),
               ...(page.type === 'page' && !GUEST
-                ? [{ label: 'Versionsverlauf …', icon: History, onSelect: () => useUI.getState().setOverlay('versions') }]
+                ? [
+                    { label: 'Versionsverlauf …', icon: History, onSelect: () => useUI.getState().setOverlay('versions') },
+                    { label: 'Karteikarten dieser Seite lernen', icon: Layers, onSelect: () => startLearning(page.id) },
+                  ]
                 : []),
               ...(page.type === 'page'
                 ? [{ label: 'Kommentare', icon: MessageSquare, onSelect: () => useUI.getState().setOverlay('comments') }]

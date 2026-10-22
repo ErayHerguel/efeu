@@ -49,6 +49,8 @@ import { useTheme } from './features/useTheme';
 import { UpdateBanner } from './features/update/UpdateBanner';
 import { hydrateUpdates, scheduleStartupCheck } from './features/update/updater';
 import { startCloud } from './features/cloud/cloud';
+import { LearnDialog } from './features/cards/LearnDialog';
+import { countDue } from './features/cards/learn';
 import { usePages } from './store/pages';
 import { forgetPages, useUI } from './store/ui';
 
@@ -97,6 +99,9 @@ function bootstrap(): Promise<void> {
       .then((path) => path && toast(`efeu liegt noch als „flou.app“ unter ${path.replace(/\/[^/]+$/, '')}. Du kannst es im Finder in „efeu.app“ umbenennen.`))
       .catch(() => undefined);
     startCloud().catch((err) => console.error('Cloud-Abgleich konnte nicht starten', err));
+    // Fällige Karteikarten zählen: beim Start und alle zehn Minuten
+    void countDue();
+    setInterval(() => void countDue(), 10 * 60 * 1000);
     startReminders(settings);
     if (IS_MAC) installMenu().catch((err) => console.error('Menü konnte nicht erstellt werden', err));
   })();
@@ -183,6 +188,7 @@ export function App() {
       {overlay === 'join' && <JoinDialog />}
       {overlay === 'settings' && <SettingsDialog />}
       {overlay === 'templates' && <TemplatePicker />}
+      {overlay === 'learn' && <LearnDialog />}
       <ConfirmDialog />
       <AiConfirm />
       <WritePanel />

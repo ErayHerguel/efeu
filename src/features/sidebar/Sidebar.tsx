@@ -20,6 +20,7 @@ import type { Space } from '../../db/pages';
 import { useCloud } from '../cloud/cloud';
 import { PageTree } from './PageTree';
 import { MentionsButton } from '../team/MentionsButton';
+import { LearnButton } from '../cards/LearnButton';
 import { Resizer } from './Resizer';
 
 const THEME_ORDER: Theme[] = ['system', 'light', 'dark'];
@@ -130,6 +131,7 @@ function SidebarContent({ narrow }: { narrow: boolean }) {
           </SidebarButton>
         )}
         <MentionsButton />
+        {!GUEST && <LearnButton />}
         {hasHome && (
           <SidebarButton icon={House} onClick={() => useUI.getState().open(homeId!)} hint={formatCombo('Mod+Shift+O')}>
             Startseite

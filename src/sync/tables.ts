@@ -16,6 +16,8 @@ const ROW_TABLES: Record<string, { key?: string[]; exclude?: string[] }> = {
   share_members: {},
   share_grants: {},
   categories: {},
+  // Lernstand der Karteikarten: nur die eigenen Geräte (der Server gibt ihn nie an Team-Mitglieder)
+  card_reviews: {},
 };
 
 /** Seiteninhalt und Boards werden nicht spaltenweise, sondern inhaltlich zusammengeführt. */
@@ -147,6 +149,7 @@ export const PAGE_COLUMN: Record<string, string> = {
   db_values: 'page_id',
   db_properties: 'database_id',
   db_views: 'database_id',
+  card_reviews: 'page_id',
 };
 
 /**

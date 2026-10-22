@@ -22,6 +22,7 @@ import { PageRef } from './nodes/pageRef';
 import { Toggle } from './nodes/toggle';
 import { MentionSuggestion, PageLinkSuggestion, SlashCommand } from './suggest/extensions';
 import { Mention } from './nodes/mention';
+import { CardLines } from './cardLines';
 import type { DocBinding } from '../features/collab/sources';
 
 interface ToolbarStorage {
@@ -92,6 +93,7 @@ export function createExtensions(pageId: string, collab?: Pick<DocBinding, 'doc'
     SlashCommand.configure({ pageId }),
     PageLinkSuggestion.configure({ pageId }),
     MentionSuggestion,
+    CardLines,
     DragHandle,
     ImageInput,
     LinkClick,
