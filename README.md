@@ -269,6 +269,7 @@ Mit eigener Cloud gliedert sich die Seitenleiste in **Team**, **Privat** und **N
 - **Sichtbarkeit:** Der Server gibt Team-Geräten nur Änderungen im Team-Bereich (`server/scope.ts`). Was neu ins Team kommt, wird als Schnappschuss nachgeliefert; was es verlässt, mit `forget` entfernt (ohne Grabstein). Mitglieder dürfen nichts aus dem Team nehmen, nichts endgültig löschen und keine Freigaben ändern; Anhänge bekommen sie nur, wenn Team-Seiten darauf verweisen.
 - **„Nur auf diesem Computer“** wird nie hochgeladen. Wechselt eine Seite von dort in einen anderen Bereich, wird sie samt Inhalt nachgeliefert; umgekehrt wird sie aus der Cloud genommen, bleibt aber lokal. Änderungen von außen fassen solche Seiten nie an.
 - **Live:** Die App verbindet sich per WebSocket mit dem Geräteschlüssel (`/api/ws`) mit demselben Hub wie der Browser: Tippen, Cursor und Präsenz sofort. Der Server vermerkt in `pages.updated_by`, wer zuletzt geändert hat.
+- **Erwähnungen:** `@` im Editor fügt einen Erwähnungs-Knoten ein (`mention`, Kennung und Name). Der Server merkt sich je Seite, wer schon erwähnt ist (`mention_seen`), und legt für neu Erwähnte eine Mitteilung an (`notifications`), nur wenn die Person die Seite sehen darf. Die App bekommt sie per Server-Sent Event (`notify`) und zeigt eine Systemmitteilung, der Browser über den Hub; beide listen sie unter „Erwähnungen“.
 - Passwort zurücksetzen: Link unter Team (`/reset/<code>`, 24 Stunden). Entfernen beendet Zugang, Geräte und Sitzungen sofort.
 
 ## Formeln
