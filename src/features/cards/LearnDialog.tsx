@@ -98,7 +98,7 @@ export function LearnDialog() {
               <h3 className="text-lg font-semibold">Noch keine Karteikarten</h3>
               <p className="max-w-[420px] text-sm text-muted">
                 Schreib in eine Seite eine Zeile wie <code className="rounded bg-code px-1">Hauptstadt von Frankreich :: Paris</code> oder einen
-                Toggle-Block: die Überschrift ist die Frage, der Inhalt die Antwort.
+                Toggle-Block, dessen Überschrift eine Frage ist (mit „?“ am Ende); der Inhalt ist die Antwort.
               </p>
             </>
           ) : (

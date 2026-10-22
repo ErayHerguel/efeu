@@ -12,6 +12,7 @@ describe('Karteikarten aus Notizen', () => {
         p('Kein Trenner hier'),
         p(':: ohne Frage'),
         { type: 'toggle', content: [p('Was ist Photosynthese?'), p('Licht → Zucker'), p('in Chloroplasten')] },
+        { type: 'toggle', content: [p('Details zum Projekt'), p('nur eingeklappt, keine Karte')] },
         { type: 'codeBlock', content: [{ type: 'text', text: 'a :: b' }] },
         p('hauptstadt von frankreich :: doppelt'),
       ],

@@ -40,7 +40,8 @@ function textOf(node: JSONContent, titleOf: (pageId: string) => string): string 
 const normalize = (text: string) => text.replace(/\s+/g, ' ').trim().toLowerCase();
 
 /**
- * Karten einer Seite: Zeilen „Frage :: Antwort“ und Toggle-Blöcke (Überschrift = Frage, Inhalt = Antwort).
+ * Karten einer Seite: Zeilen „Frage :: Antwort“ und Toggle-Blöcke, deren Überschrift eine Frage ist
+ * (endet mit „?“; Inhalt = Antwort).
  * Gleiche Fragen in derselben Seite zählen als eine Karte.
  */
 export function extractCards(pageId: string, doc: JSONContent, titleOf: (pageId: string) => string = () => ''): Card[] {
@@ -60,8 +61,10 @@ export function extractCards(pageId: string, doc: JSONContent, titleOf: (pageId:
       return;
     }
     if (node.type === 'toggle') {
+      // Nur Toggles mit einer Frage als Überschrift; andere sind einfach eingeklappte Abschnitte.
       const [summary, ...body] = node.content ?? [];
-      if (summary) add(textOf(summary, titleOf), body.map((b) => textOf(b, titleOf)).join('\n'));
+      const front = summary ? textOf(summary, titleOf) : '';
+      if (front.trim().endsWith('?')) add(front, body.map((b) => textOf(b, titleOf)).join('\n'));
       for (const b of body) walk(b);
       return;
     }
