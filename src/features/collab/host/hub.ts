@@ -80,6 +80,12 @@ export interface HubTransport {
   host: boolean;
   /** Wie die Seiten-Dokumente geladen werden (Cloud: aus dem abgeglichenen Yjs-Zustand). */
   loadDoc?: (pageId: string) => Promise<Y.Doc>;
+  /** Team der Cloud: Leute für @-Erwähnungen und Mitteilungen (nur auf dem Server) */
+  team?: {
+    people(): { id: string; name: string; color: string }[];
+    notifications(personId: string): unknown[];
+    read(personId: string, ids: number[] | 'all'): void;
+  };
 }
 
 const tauriTransport: HubTransport = {
@@ -125,6 +131,8 @@ const memberOf = (memberId: string) => virtualMembers.get(memberId) ?? useHostin
 
 const isDevice = (memberId: string) => memberOf(memberId)?.kind === 'device';
 const isTeam = (memberId: string) => memberOf(memberId)?.teamRole === 'member';
+/** Person für Erwähnungen: die Geräte des Inhabers sind alle 'owner'. */
+const personOf = (memberId: string) => (memberId.startsWith('owner-') ? 'owner' : memberId);
 
 function accessOf(memberId: string): Map<string, Access> {
   let access = accessCache.get(memberId);
@@ -500,6 +508,16 @@ async function handle(c: Connection, req: Request): Promise<unknown> {
       requireAccess(c, req.databaseId, 'edit');
       if (pages[req.databaseId]?.type !== 'database') invalid();
       return dbCall(req.databaseId, req.method, req.args);
+    case 'people': {
+      const team = transport.team;
+      if (!team || (!isTeam(c.memberId) && !isDevice(c.memberId))) return { people: [], me: null };
+      return { people: team.people(), me: personOf(c.memberId) };
+    }
+    case 'notifications':
+      return transport.team?.notifications(personOf(c.memberId)) ?? [];
+    case 'notifications.read':
+      transport.team?.read(personOf(c.memberId), req.ids);
+      return null;
     case 'search': {
       const access = accessOf(c.memberId);
       const hits = await searchPages(req.query, 80);

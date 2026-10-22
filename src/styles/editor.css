@@ -728,3 +728,20 @@ div.block-handle-button {
   user-select: none;
   pointer-events: none;
 }
+
+/* Erwähnung „@Lena“ */
+.efeu-editor .mention {
+  border-radius: 4px;
+  padding: 0 3px;
+  color: var(--mention);
+  background: color-mix(in srgb, var(--mention) 14%, transparent);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: default;
+}
+.efeu-editor .mention.is-me {
+  background: color-mix(in srgb, var(--mention) 26%, transparent);
+}
+.efeu-editor .mention.is-selected {
+  outline: 2px solid var(--c-accent);
+}

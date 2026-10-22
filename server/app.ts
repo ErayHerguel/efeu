@@ -5,6 +5,8 @@ import type { Device, Devices } from './devices';
 import type { Sharing } from './share';
 import { applyUpdate } from './update';
 import { TeamError, type Team } from './team';
+import type { Mentions } from './mentions';
+import { HOST_COLOR } from '../src/features/collab/host/hosting';
 import { teamVisible, visibleAssets } from './scope';
 import type { Store } from './store';
 
@@ -86,10 +88,11 @@ export interface Context {
   team?: Team;
   /** Nach Änderungen am Team (Beitritt, Entfernen): Ansichten und Protokoll nachführen */
   teamChanged?: () => void;
+  mentions?: Mentions;
 }
 
 /** HTTP-Schnittstelle der Cloud. Läuft hinter einem HTTPS-Proxy (Caddy) oder im Heimnetz. */
-export function createApp({ store, cloud, devices, sharing, team, teamChanged = () => undefined }: Context): Server {
+export function createApp({ store, cloud, devices, sharing, team, teamChanged = () => undefined, mentions }: Context): Server {
   const pairLimiter = new Limiter(10, 60_000);
   const loginLimiter = new Limiter(10, 5 * 60_000);
   const limit = (req: IncomingMessage, limiter: Limiter) => {
@@ -192,9 +195,14 @@ export function createApp({ store, cloud, devices, sharing, team, teamChanged = 
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', 'x-accel-buffering': 'no' });
       res.write(`event: changed\ndata: ${cloud.latest()}\n\n`);
       const off = cloud.onChange((seq) => res.write(`event: changed\ndata: ${seq}\n\n`));
+      // Neue Erwähnung für die Person dieses Geräts
+      const offNotify = mentions?.onNotify((memberId) => {
+        if (memberId === (device.memberId ?? 'owner')) res.write('event: notify\ndata: 1\n\n');
+      });
       const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
       req.on('close', () => {
         off();
+        offNotify?.();
         clearInterval(ping);
       });
       return;
@@ -233,6 +241,24 @@ export function createApp({ store, cloud, devices, sharing, team, teamChanged = 
       }
     }
 
+    if (method === 'GET' && path === '/api/team/people') {
+      // Für @-Erwähnungen: der Inhaber und die Team-Mitglieder (ohne Zugangsdaten)
+      const members = store.raw.prepare("SELECT id, name, color FROM share_members WHERE team_role = 'member' ORDER BY created_at").all() as {
+        id: string;
+        name: string;
+        color: string;
+      }[];
+      return send(res, 200, { people: [{ id: 'owner', name: cloud.editorName(null), color: HOST_COLOR }, ...members], me: device.memberId ?? 'owner' });
+    }
+    if (mentions && method === 'GET' && path === '/api/notifications') {
+      return send(res, 200, { notifications: mentions.list(device.memberId ?? 'owner') });
+    }
+    if (mentions && method === 'POST' && path === '/api/notifications/read') {
+      const body = await readJson<{ ids?: unknown }>(req);
+      const ids = Array.isArray(body.ids) ? body.ids.filter((n): n is number => Number.isInteger(n)) : 'all';
+      mentions.markRead(device.memberId ?? 'owner', ids);
+      return send(res, 200, { ok: true });
+    }
     if (team && path === '/api/team/members' && method === 'GET') {
       owner();
       return send(res, 200, { members: team.list() });

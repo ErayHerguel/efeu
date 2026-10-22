@@ -10,6 +10,7 @@ import { createApp } from './app';
 import { Devices } from './devices';
 import { startHost } from './host';
 import { Sharing } from './share';
+import { Mentions } from './mentions';
 import { Team } from './team';
 import { openStore } from './store';
 
@@ -27,7 +28,7 @@ async function start() {
   const devices = new Devices(store);
   const sharing = new Sharing(store, web, devices);
   const team = new Team(store);
-  const { cloud, teamChanged } = await startHost(store, sharing, team);
+  const { cloud, teamChanged } = await startHost(store, sharing, team, new Mentions(store));
   const server = createApp({ store, cloud, devices, sharing, team, teamChanged });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   closers.push(() => server.close());

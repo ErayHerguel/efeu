@@ -11,6 +11,7 @@ import { listRenderer } from './renderer';
 import { SLASH_ITEMS, type SlashItem } from './slashItems';
 import { aiUsable } from '../../features/ai/store';
 import { GUEST } from '../../lib/mode';
+import { usePeople, type TeamPerson } from '../../features/team/people';
 
 interface PageContextOptions {
   pageId: string;
@@ -119,6 +120,47 @@ export const PageLinkSuggestion = Extension.create<PageContextOptions>({
                 <FileText size={14} className="ml-auto shrink-0 text-faint" />
               </>
             ),
+        }),
+      }),
+    ];
+  },
+});
+
+/** @ öffnet die Liste der Leute im Team; Auswahl fügt eine Erwähnung ein (die Person bekommt eine Mitteilung). */
+export const MentionSuggestion = Extension.create({
+  name: 'mentionSuggestion',
+  addProseMirrorPlugins() {
+    return [
+      Suggestion<TeamPerson, TeamPerson>({
+        editor: this.editor,
+        pluginKey: new PluginKey('mentionSuggestion'),
+        char: '@',
+        allow: ({ editor }) => !editor.isActive('codeBlock') && usePeople.getState().people.length > 1,
+        items: ({ query }) => {
+          const { people, me } = usePeople.getState();
+          const others = people.filter((p) => p.id !== me);
+          return (query ? fuzzyFilter(others, query, (p) => [p.name]) : others).slice(0, 8);
+        },
+        command: ({ editor, range, props }) =>
+          editor
+            .chain()
+            .focus()
+            .insertContentAt(range, [
+              { type: 'mention', attrs: { id: props.id, label: props.name } },
+              { type: 'text', text: ' ' },
+            ])
+            .run(),
+        render: listRenderer<TeamPerson>({
+          itemKey: (p) => p.id,
+          empty: 'Niemand gefunden',
+          renderItem: (p) => (
+            <>
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium text-white" style={{ background: p.color }}>
+                {p.name.slice(0, 1).toUpperCase()}
+              </span>
+              <span className="truncate text-text">{p.name}</span>
+            </>
+          ),
         }),
       }),
     ];

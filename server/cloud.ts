@@ -102,11 +102,17 @@ export class Cloud {
       }
       const applied = await this.replica.apply(valid);
       const seq = this.append(origin, valid);
-      this.stampEditor(valid, this.editorName(memberId));
+      const name = this.editorName(memberId);
+      this.stampEditor(valid, name);
+      const docs = valid.filter((c) => c.kind === 'doc').map((c) => (c as { page: string }).page);
+      if (docs.length) this.afterDocs?.(docs, memberId ?? 'owner', name);
       this.onApplied(applied);
       return seq;
     }).finally(() => void this.drainLocal().catch(() => undefined));
   }
+
+  /** Nach übernommenen Seiteninhalten eines Geräts (z. B. für Erwähnungen): Seiten, wer, Anzeigename. */
+  afterDocs: ((pages: string[], byId: string, byName: string) => void) | null = null;
 
   /** Anzeigename für „Zuletzt bearbeitet von …“: Team-Mitglied oder der Inhaber. */
   editorName(memberId: string | null): string {

@@ -20,7 +20,8 @@ import { Image } from './nodes/image';
 import { PageLink } from './nodes/pageLink';
 import { PageRef } from './nodes/pageRef';
 import { Toggle } from './nodes/toggle';
-import { PageLinkSuggestion, SlashCommand } from './suggest/extensions';
+import { MentionSuggestion, PageLinkSuggestion, SlashCommand } from './suggest/extensions';
+import { Mention } from './nodes/mention';
 import type { DocBinding } from '../features/collab/sources';
 
 interface ToolbarStorage {
@@ -83,12 +84,14 @@ export function createExtensions(pageId: string, collab?: Pick<DocBinding, 'doc'
     BoardEmbed,
     PageRef,
     PageLink,
+    Mention,
     Placeholder.configure({
       placeholder: ({ node }) =>
         node.type.name === 'heading' ? `Überschrift ${node.attrs.level}` : 'Tippe „/“ für Befehle oder „[[“ für Seitenlinks …',
     }),
     SlashCommand.configure({ pageId }),
     PageLinkSuggestion.configure({ pageId }),
+    MentionSuggestion,
     DragHandle,
     ImageInput,
     LinkClick,

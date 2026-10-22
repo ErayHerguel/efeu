@@ -79,7 +79,10 @@ export type Request =
   | { op: 'board.files'; pageId: string; files: Record<string, BoardFile> }
   | { op: 'db.open'; databaseId: string }
   | { op: 'db.call'; databaseId: string; method: DbMethod; args: unknown[] }
-  | { op: 'search'; query: string };
+  | { op: 'search'; query: string }
+  | { op: 'people' }
+  | { op: 'notifications' }
+  | { op: 'notifications.read'; ids: number[] | 'all' };
 
 export type PointerTool = 'pointer' | 'laser';
 
@@ -114,7 +117,8 @@ export type ServerMessage =
     }
   | { t: 'board.leave'; pageId: string; person: string }
   | { t: 'db'; databaseId: string; data: DatabaseData }
-  | { t: 'categories'; categories: Category[] };
+  | { t: 'categories'; categories: Category[] }
+  | { t: 'notify' };
 
 export type SearchResult = SearchHit[];
 
@@ -211,6 +215,15 @@ function parseRequest(v: unknown): Request | null {
       return { op: 'db.call', databaseId: v.databaseId, method: v.method as DbMethod, args: v.args };
     case 'search':
       return isText(v.query, 500) ? { op: 'search', query: v.query } : null;
+    case 'people':
+      return { op: 'people' };
+    case 'notifications':
+      return { op: 'notifications' };
+    case 'notifications.read':
+      if (v.ids === 'all') return { op: 'notifications.read', ids: 'all' };
+      return Array.isArray(v.ids) && v.ids.length <= 200 && v.ids.every((n) => Number.isInteger(n))
+        ? { op: 'notifications.read', ids: v.ids as number[] }
+        : null;
     default:
       return null;
   }

@@ -12,6 +12,7 @@ import { createApp } from './app';
 import { Cloud } from './cloud';
 import { Devices } from './devices';
 import { checkPassword, hashPassword, Team } from './team';
+import { Mentions } from './mentions';
 import { openStore } from './store';
 
 const closers: (() => void)[] = [];
@@ -23,7 +24,9 @@ async function start() {
   const cloud = new Cloud(store);
   await cloud.start();
   const team = new Team(store);
-  const server = createApp({ store, cloud, devices, team, teamChanged: () => void cloud.drainLocal() });
+  const mentions = new Mentions(store);
+  cloud.afterDocs = (pages, byId, byName) => mentions.scan(pages, byId, byName);
+  const server = createApp({ store, cloud, devices, team, mentions, teamChanged: () => void cloud.drainLocal() });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   closers.push(() => server.close());
   return { store, devices, cloud, team, url: `http://127.0.0.1:${(server.address() as AddressInfo).port}` };
@@ -160,4 +163,41 @@ describe('Team', () => {
     expect(team.list()).toEqual([]);
     expect((await fetch(`${url}/api/me`, { headers: { authorization: `Bearer ${deviceToken}` } })).status).toBe(401);
   });
+
+  it('benachrichtigt bei neuen Erwähnungen, nur wer die Seite sehen darf, ohne Doppelte', async () => {
+    const { url, devices } = await start();
+    const owner = device(url, devices.add('Mac').token);
+    await owner.replica.enable('mac');
+    const { code } = (await (await owner.call('/api/team/invites', { method: 'POST' })).json()) as { code: string };
+    const joined = (await (await post(url, '/api/team/join', { code, name: 'Lena', login: 'lena', password: 'ganz-geheim-123', device: 'Lenas Mac' })).json()) as {
+      memberId: string;
+      deviceToken: string;
+    };
+    const lena = device(url, joined.deviceToken);
+    const people = (await (await lena.call('/api/team/people')).json()) as { people: { id: string; name: string }[]; me: string };
+    expect(people.people.map((p) => p.name)).toEqual(['Inhaber', 'Lena']);
+    expect(people.me).toBe(joined.memberId);
+
+    const mention = (id: string, label: string, text = 'schau mal') => ({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'mention', attrs: { id, label } }, { type: 'text', text: ` ${text}` }] }],
+    });
+    await owner.driver.tx([
+      page('t', 'Plan', 'team'),
+      page('p', 'Geheim', 'private'),
+      ...saveContent('t', mention(joined.memberId, 'Lena'), '', [], 1),
+      ...saveContent('p', mention(joined.memberId, 'Lena'), '', [], 1),
+    ]);
+    await owner.client.sync();
+    const list = async () => ((await (await lena.call('/api/notifications')).json()) as { notifications: { title: string; byName: string; read: boolean }[] }).notifications;
+    expect(await list()).toEqual([expect.objectContaining({ title: 'Plan', byName: 'Inhaber', read: false })]);
+
+    // Weiterschreiben erwähnt nicht erneut; gelesen markieren.
+    await owner.driver.tx(saveContent('t', mention(joined.memberId, 'Lena', 'schau mal bitte'), '', [], 2));
+    await owner.client.sync();
+    expect(await list()).toHaveLength(1);
+    await lena.call('/api/notifications/read', { method: 'POST', body: JSON.stringify({ ids: 'all' }) });
+    expect((await list())[0].read).toBe(true);
+  });
 });
+

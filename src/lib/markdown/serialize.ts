@@ -67,7 +67,7 @@ function inline(nodes: JSONContent[] = [], ctx: SerializeContext): string {
       else if (node.type === 'pageLink') {
         const target = ctx.page(String(node.attrs?.pageId));
         out += target.href ? `[${escapeText(target.title)}](${target.href})` : `[[${target.title}]]`;
-      }
+      } else if (node.type === 'mention') out += escapeText(`@${String(node.attrs?.label ?? '')}`);
       continue;
     }
 

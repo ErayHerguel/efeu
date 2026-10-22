@@ -401,6 +401,8 @@ async fn listen(app: &AppHandle, conn: &Connection, generation: u64) -> Result<(
             let event: String = buffer.drain(..end + 2).collect();
             if let Some(seq) = parse_changed(&event) {
                 let _ = app.emit("cloud:changed", seq);
+            } else if event.lines().any(|l| l == "event: notify") {
+                let _ = app.emit("cloud:notify", ());
             }
         }
     }

@@ -249,10 +249,10 @@ export class Sharing {
     res.end(this.index);
   }
 
-  private edits = new Map<string, string>();
+  private edits = new Map<string, { id: string; name: string }>();
   private editTimer: ReturnType<typeof setTimeout> | null = null;
   /** Wird aufgerufen, um gesammelte Bearbeitungen zu vermerken (Seite → Name). */
-  onEdits: ((edits: Map<string, string>) => void) | null = null;
+  onEdits: ((edits: Map<string, { id: string; name: string }>) => void) | null = null;
 
   /** Merkt sich, wer im Browser oder live in der App welche Seite bearbeitet (für „Zuletzt bearbeitet von …“). */
   private noteEdit(memberId: string, text: string) {
@@ -268,13 +268,22 @@ export class Sharing {
     const name = memberId.startsWith('owner-')
       ? (this.ownerNames.get(memberId) ?? 'Inhaber')
       : ((this.store.raw.prepare('SELECT name FROM share_members WHERE id = ?').get(memberId) as { name: string } | undefined)?.name ?? 'Gast');
-    this.edits.set(page, name);
+    this.edits.set(page, { id: memberId.startsWith('owner-') ? 'owner' : memberId, name });
     this.editTimer ??= setTimeout(() => {
       this.editTimer = null;
       const edits = this.edits;
       this.edits = new Map();
       this.onEdits?.(edits);
     }, 2000);
+  }
+
+  /** Benachrichtigt die Browser- und App-Verbindungen einer Person (z. B. neue Erwähnung). */
+  notify(memberId: string) {
+    const data = JSON.stringify({ t: 'notify' });
+    for (const socket of this.sockets.values()) {
+      const id = socket.memberId.startsWith('owner-') ? 'owner' : socket.memberId;
+      if (id === memberId && socket.ws.readyState === socket.ws.OPEN) socket.ws.send(data);
+    }
   }
 
   private ownerNames = new Map<string, string>();

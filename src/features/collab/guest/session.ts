@@ -14,6 +14,8 @@ import { usePresence } from '../presence';
 import { guestBoard } from './boards';
 import { connection, HostError } from './connection';
 import { guestDoc } from './docs';
+import { refreshNotices, setNoticeSource, type MentionNotice } from '../../team/notifications';
+import { usePeople, type TeamPerson } from '../../team/people';
 
 const TOKEN_KEY = 'efeu-token';
 /** So viele erfolglose Versuche, dann sucht ein eigenes Gerät die neue Adresse über die Startseite. */
@@ -367,6 +369,9 @@ function onMessage(message: ServerMessage) {
     case 'categories':
       usePages.setState({ categories: Object.fromEntries(message.categories.map((c) => [c.id, c])) });
       return;
+    case 'notify':
+      void refreshNotices().catch(() => undefined);
+      return;
   }
 }
 
@@ -382,6 +387,20 @@ async function greet() {
     void useDatabases.getState().load(id).catch((err) => console.error('Datenbank neu laden', err));
   }
   connection.send({ t: 'view', pageId: useUI.getState().currentId });
+  // Team der Cloud: Leute für @-Erwähnungen und eigene Erwähnungen (beim Teilen über den Mac leer).
+  // Nicht abwarten: ältere Gastgeber kennen die Anfrage nicht und antworten nie.
+  void connection
+    .request<{ people: TeamPerson[]; me: string | null }>({ op: 'people' })
+    .then((team) => {
+      usePeople.setState({ people: team.people, me: team.me });
+      if (!team.people.length) return;
+      setNoticeSource({
+        list: () => connection.request<MentionNotice[]>({ op: 'notifications' }),
+        read: (ids) => connection.request({ op: 'notifications.read', ids }),
+      });
+      return refreshNotices();
+    })
+    .catch(() => undefined);
 }
 
 const firstRoot = () => {

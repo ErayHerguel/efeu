@@ -1,13 +1,14 @@
 import { setDriver } from '../src/db/driver';
 import { flush, onWrite } from '../src/db/saveQueue';
 import { loadGrants, loadMembers } from '../src/db/share';
-import { useHosting } from '../src/features/collab/host/hosting';
+import { HOST_COLOR, useHosting } from '../src/features/collab/host/hosting';
 import { hubBoards, hubDocs, startHub, syncAccess } from '../src/features/collab/host/hub';
 import type { Applied, ReplicaHooks } from '../src/sync/replica';
 import { useDatabases } from '../src/store/databases';
 import { usePages } from '../src/store/pages';
 import { Cloud } from './cloud';
 import type { Sharing } from './share';
+import type { Mentions } from './mentions';
 import type { Team } from './team';
 import type { Store } from './store';
 
@@ -16,7 +17,7 @@ import type { Store } from './store';
  * Was Gäste ändern, landet über die Schreib-Warteschlange in der Datenbank und von dort im Protokoll
  * für die eigenen Geräte; was die Geräte hochladen, wird in die Stores und offenen Dokumente übernommen.
  */
-export async function startHost(store: Store, sharing: Sharing, team: Team): Promise<{ cloud: Cloud; teamChanged: () => void }> {
+export async function startHost(store: Store, sharing: Sharing, team: Team, mentions: Mentions): Promise<{ cloud: Cloud; teamChanged: () => void }> {
   setDriver(store);
   const hooks: ReplicaHooks = {
     openDoc: (page) => hubDocs()?.peek(page),
@@ -42,13 +43,31 @@ export async function startHost(store: Store, sharing: Sharing, team: Team): Pro
   useHosting.setState({ members: await loadMembers(), grants: await loadGrants(), hostName: 'efeu' });
   if (sharing.hasWebApp) {
     const replica = cloud.replica;
-    await startHub({ ...sharing.transport(), loadDoc: (page) => replica.loadDoc(page) });
+    await startHub({
+      ...sharing.transport(),
+      loadDoc: (page) => replica.loadDoc(page),
+      team: {
+        people: () => [
+          { id: 'owner', name: cloud.editorName(null), color: HOST_COLOR },
+          ...(store.raw.prepare("SELECT id, name, color FROM share_members WHERE team_role = 'member' ORDER BY created_at").all() as {
+            id: string;
+            name: string;
+            color: string;
+          }[]),
+        ],
+        notifications: (person) => mentions.list(person),
+        read: (person, ids) => mentions.markRead(person, ids),
+      },
+    });
   }
 
   sharing.onOwnerName = (name) => cloud!.setOwnerName(name);
+  cloud.afterDocs = (pages, byId, byName) => mentions.scan(pages, byId, byName);
+  mentions.onNotify((memberId) => sharing.notify(memberId));
   sharing.onEdits = (edits) => {
-    for (const [page, name] of edits) {
+    for (const [page, { id, name }] of edits) {
       store.raw.prepare('UPDATE pages SET updated_by = ? WHERE id = ? AND updated_by IS NOT ?').run(name, page, name);
+      mentions.scan([page], id, name);
     }
     void cloud!.drainLocal().then(() => usePages.getState().load()).catch((err) => console.error('Bearbeiter vermerken', err));
   };

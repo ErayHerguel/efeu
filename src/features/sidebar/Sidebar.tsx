@@ -19,6 +19,7 @@ import { formatCombo } from '../shortcuts/keys';
 import type { Space } from '../../db/pages';
 import { useCloud } from '../cloud/cloud';
 import { PageTree } from './PageTree';
+import { MentionsButton } from '../team/MentionsButton';
 import { Resizer } from './Resizer';
 
 const THEME_ORDER: Theme[] = ['system', 'light', 'dark'];
@@ -128,6 +129,7 @@ function SidebarContent({ narrow }: { narrow: boolean }) {
             Heute
           </SidebarButton>
         )}
+        <MentionsButton />
         {hasHome && (
           <SidebarButton icon={House} onClick={() => useUI.getState().open(homeId!)} hint={formatCombo('Mod+Shift+O')}>
             Startseite

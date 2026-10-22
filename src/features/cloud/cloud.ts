@@ -15,6 +15,8 @@ import { BoardHub } from '../collab/host/boards';
 import { DocHub } from '../collab/host/docs';
 import { HOST_COLOR, useHosting } from '../collab/host/hosting';
 import { live } from './live';
+import { refreshNotices, setNoticeSource, type MentionNotice } from '../team/notifications';
+import { usePeople, type TeamPerson } from '../team/people';
 import { useCollab } from '../collab/sources';
 
 export type CloudPhase = 'off' | 'connecting' | 'synced' | 'syncing' | 'offline' | 'error';
@@ -115,9 +117,24 @@ async function runSync() {
   }
 }
 
+async function loadPeople() {
+  const result = await cloudRequest<{ people: TeamPerson[]; me: string }>('GET', '/api/team/people').catch(() => null);
+  if (result) usePeople.setState({ people: result.people, me: result.me });
+}
+
+/** Erwähnungen neu laden und neue als Systemmitteilung zeigen (beim Start still). */
+async function announceNotices(quiet: boolean) {
+  const fresh = await refreshNotices().catch(() => []);
+  if (quiet || !fresh.length) return;
+  const first = fresh[0];
+  const title = fresh.length === 1 ? `${first.byName} hat dich erwähnt` : `${fresh.length} neue Erwähnungen`;
+  await invoke('notify', { title, body: fresh.map((n) => n.title || 'Ohne Titel').join(', ') }).catch(() => undefined);
+}
+
 /** Ansicht nach übernommenen Änderungen neu laden (offene Seiten und Boards laufen live mit). */
 async function refresh(rows: boolean) {
   if (!rows) return;
+  void loadPeople();
   // Erst Ausstehendes schreiben, sonst überschriebe der neu geladene Stand eine laufende Änderung.
   await flush();
   await usePages.getState().load();
@@ -219,6 +236,14 @@ export async function startCloud(): Promise<void> {
       else useCloud.setState({ phase: 'offline', error: e.payload.error });
     }),
   ]);
+  // Leute für @-Erwähnungen und die eigenen Erwähnungen
+  setNoticeSource({
+    list: async () => (await cloudRequest<{ notifications: MentionNotice[] }>('GET', '/api/notifications')).notifications,
+    read: (ids) => cloudRequest('POST', '/api/notifications/read', { ids }),
+  });
+  void loadPeople();
+  void announceNotices(true);
+  unlisten.push(await listen('cloud:notify', () => void announceNotices(false)));
   const periodic = setInterval(() => scheduleSync(0), PERIODIC_MS);
   session = {
     client,
@@ -283,6 +308,8 @@ async function stopSession() {
   session = null;
   if (timer) clearTimeout(timer);
   for (const off of s.cleanup) off();
+  setNoticeSource(null);
+  usePeople.setState({ people: [], me: null });
   await live.stop();
   await flush();
   useCollab.setState((st) => ({ docs: null, boards: null, epoch: st.epoch + 1 }));
