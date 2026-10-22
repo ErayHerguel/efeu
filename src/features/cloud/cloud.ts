@@ -71,7 +71,7 @@ const transport: Transport = {
 };
 
 /** Kurz warten, damit schnelles Tippen nicht jede Sekunde einen Abgleich auslöst. */
-const DEBOUNCE_MS = 1500;
+const DEBOUNCE_MS = 500;
 /** Auffangnetz, falls eine Änderung an der Schreib-Warteschlange vorbei geschrieben wurde. */
 const PERIODIC_MS = 30_000;
 
@@ -152,13 +152,31 @@ function installSources(docs: DocHub, boards: BoardHub) {
     },
     boards: async (pageId, events) => {
       const attached = await boards.attach(pageId, events);
+      // Live mit den anderen: Elemente und Mauszeiger sofort, nicht erst beim nächsten Abgleich.
+      let latest = attached.snapshot.elements;
+      void boards.elementsOf(pageId).then((e) => (latest = e.length ? e : latest));
+      live.attachBoard(pageId, {
+        events,
+        current: () => latest,
+        external: (elements, files) => boards.external(pageId, elements, files),
+      });
       return {
         snapshot: attached.snapshot,
-        change: attached.change,
+        change: (changed, background) => {
+          attached.change(changed, background);
+          live.boardChanged(pageId, changed);
+          void boards.elementsOf(pageId).then((e) => (latest = e));
+        },
         storeImage: (blob, name) => importImageBlob(blob, name),
-        addFiles: (files) => void boards.addFiles(pageId, 'host', files),
-        pointer: () => undefined,
-        release: attached.detach,
+        addFiles: (files) => {
+          void boards.addFiles(pageId, 'host', files);
+          live.boardFiles(pageId, files);
+        },
+        pointer: (x, y, tool, button) => live.boardPointer(pageId, x, y, tool, button),
+        release: () => {
+          live.detachBoard(pageId);
+          attached.detach();
+        },
       };
     },
   }));

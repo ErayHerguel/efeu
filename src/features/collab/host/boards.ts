@@ -128,6 +128,12 @@ export class BoardHub {
     if (origin !== 'host') for (const l of entry.listeners) l.files(fresh);
   }
 
+  /** Aktuelle Elemente eines geöffneten Boards (leer, wenn es nicht offen ist). */
+  async elementsOf(pageId: string): Promise<Element[]> {
+    const entry = await this.entries.get(pageId)?.catch(() => null);
+    return entry ? ordered(entry.elements.values()) : [];
+  }
+
   /** Elemente, die der Cloud-Abgleich schon gespeichert hat: in eine offene Ansicht übernehmen. */
   external(pageId: string, elements: Element[], files: Record<string, BoardFile>) {
     void this.entries.get(pageId)?.then((entry) => {

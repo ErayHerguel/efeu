@@ -3,12 +3,33 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { applyAwarenessUpdate, encodeAwarenessUpdate, type Awareness } from 'y-protocols/awareness';
 import * as Y from 'yjs';
 import { useUI } from '../../store/ui';
-import { decodeBinary, encodeBinary, type ClientMessage, type DocSnapshot, type Request, type ServerMessage, type Welcome } from '../collab/protocol';
+import {
+  decodeBinary,
+  encodeBinary,
+  type BoardFile,
+  type BoardSnapshot,
+  type ClientMessage,
+  type DocSnapshot,
+  type PointerTool,
+  type Request,
+  type ServerMessage,
+  type Welcome,
+} from '../collab/protocol';
+import type { BoardElement, BoardEvents } from '../collab/sources';
 import { usePresence } from '../collab/presence';
 import { useCloud } from './cloud';
 
 /** Ursprung von Änderungen, die über die Live-Verbindung kamen (werden nicht zurückgeschickt). */
 export const LIVE = 'cloud-live';
+
+/** Eine im Board geöffnete Seite: wie die Live-Änderungen in die eigene Ansicht kommen. */
+export interface LiveBoard {
+  events: BoardEvents;
+  /** Aktuelle Elemente der eigenen Ansicht (zum Nachreichen beim Verbinden) */
+  current(): BoardElement[];
+  /** Elemente und Bilder der anderen übernehmen */
+  external(elements: BoardElement[], files: Record<string, BoardFile>): void;
+}
 
 interface Attached {
   doc: Y.Doc;
@@ -27,6 +48,8 @@ class LiveBridge {
   private pending = new Map<number, { resolve(v: unknown): void; reject(e: Error): void }>();
   private docs = new Map<string, Attached>();
   private subscribed = new Set<string>();
+  private boards = new Map<string, LiveBoard>();
+  private boardSubscribed = new Set<string>();
   private cleanup: UnlistenFn[] = [];
   private unsubscribeView: (() => void) | null = null;
   me: Welcome['me'] | null = null;
@@ -81,6 +104,7 @@ class LiveBridge {
       usePresence.setState({ me: `c${welcome.conn}` });
       this.send({ t: 'view', pageId: useUI.getState().currentId });
       for (const pageId of this.docs.keys()) void this.subscribe(pageId);
+      for (const pageId of this.boards.keys()) void this.subscribeBoard(pageId);
     } catch (err) {
       console.warn('Live-Verbindung', err);
     }
@@ -89,6 +113,7 @@ class LiveBridge {
   private onClosed() {
     this.open = false;
     this.subscribed.clear();
+    this.boardSubscribed.clear();
     for (const [, p] of this.pending) p.reject(new Error('Live-Verbindung unterbrochen'));
     this.pending.clear();
     usePresence.setState({ people: [], me: null });
@@ -112,6 +137,15 @@ class LiveBridge {
     } else if (message.t === 'doc.update') {
       const doc = this.docs.get(message.pageId)?.doc;
       if (doc) Y.applyUpdate(doc, decodeBinary(message.update), LIVE);
+    } else if (message.t === 'board.update') {
+      this.boards.get(message.pageId)?.external(message.elements as BoardElement[], {});
+    } else if (message.t === 'board.files') {
+      this.boards.get(message.pageId)?.external([], message.files);
+    } else if (message.t === 'board.pointer') {
+      const { pageId, t: _t, ...pointer } = message;
+      this.boards.get(pageId)?.events.pointer(pointer);
+    } else if (message.t === 'board.leave') {
+      this.boards.get(message.pageId)?.events.leave(message.person);
     } else if (message.t === 'doc.awareness') {
       const awareness = this.docs.get(message.pageId)?.awareness;
       if (awareness) applyAwarenessUpdate(awareness, decodeBinary(message.update), LIVE);
@@ -156,6 +190,46 @@ class LiveBridge {
   retry() {
     if (!this.open) return;
     for (const pageId of this.docs.keys()) if (!this.subscribed.has(pageId)) void this.subscribe(pageId);
+    for (const pageId of this.boards.keys()) if (!this.boardSubscribed.has(pageId)) void this.subscribeBoard(pageId);
+  }
+
+  /** Ein geöffnetes Board live mit den anderen verbinden (Elemente, Bilder, Mauszeiger). */
+  attachBoard(pageId: string, board: LiveBoard) {
+    this.boards.set(pageId, board);
+    if (this.open) void this.subscribeBoard(pageId);
+  }
+
+  detachBoard(pageId: string) {
+    if (!this.boards.delete(pageId)) return;
+    this.boardSubscribed.delete(pageId);
+    this.send({ t: 'leave', kind: 'board', id: pageId });
+  }
+
+  boardChanged(pageId: string, elements: BoardElement[]) {
+    if (elements.length && this.boardSubscribed.has(pageId)) this.send({ t: 'board.update', pageId, elements });
+  }
+
+  boardPointer(pageId: string, x: number, y: number, tool: PointerTool, button: 'up' | 'down') {
+    if (this.boardSubscribed.has(pageId)) this.send({ t: 'board.pointer', pageId, x, y, tool, button });
+  }
+
+  boardFiles(pageId: string, files: Record<string, BoardFile>) {
+    if (this.boardSubscribed.has(pageId)) void this.request({ op: 'board.files', pageId, files }).catch(() => undefined);
+  }
+
+  private async subscribeBoard(pageId: string) {
+    const board = this.boards.get(pageId);
+    if (!board) return;
+    try {
+      const snapshot = await this.request<BoardSnapshot>({ op: 'board.open', pageId, subscribe: true });
+      if (this.boards.get(pageId) !== board) return;
+      this.boardSubscribed.add(pageId);
+      board.external(snapshot.elements as BoardElement[], snapshot.files);
+      // Eigene Elemente nachreichen; der Server übernimmt nur, was neuer ist.
+      this.boardChanged(pageId, board.current());
+    } catch (err) {
+      console.warn('Live-Board', pageId, err);
+    }
   }
 
   private async subscribe(pageId: string) {
