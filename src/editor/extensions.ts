@@ -1,7 +1,6 @@
 import { Extension, type Extensions } from '@tiptap/core';
 import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCaret from '@tiptap/extension-collaboration-caret';
-import Highlight from '@tiptap/extension-highlight';
 import { Table, TableRow } from '@tiptap/extension-table';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Placeholder } from '@tiptap/extensions';
@@ -24,6 +23,8 @@ import { Toggle } from './nodes/toggle';
 import { MentionSuggestion, PageLinkSuggestion, SlashCommand } from './suggest/extensions';
 import { Mention } from './nodes/mention';
 import { CardLines } from './cardLines';
+import { BlockAttrs } from './format/blockAttrs';
+import { ColorHighlight, Subscript, Superscript, TextColor } from './format/marks';
 import type { DocBinding } from '../features/collab/sources';
 
 interface ToolbarStorage {
@@ -70,7 +71,11 @@ export function createExtensions(pageId: string, collab?: Pick<DocBinding, 'doc'
     CodeBlock,
     TaskList,
     TaskItem.configure({ nested: true }),
-    Highlight,
+    ColorHighlight,
+    TextColor,
+    Superscript,
+    Subscript,
+    BlockAttrs,
     Callout,
     Toggle,
     Image,

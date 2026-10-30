@@ -37,6 +37,14 @@ describe('Markdown-Export', () => {
     expect(toMarkdown(doc, ctx)).toBe('a\\*b\\_c \\[x\\]\n\n`a*b`\n');
   });
 
+  it('schreibt Hoch-/Tiefstellung als HTML und lässt Farben weg', () => {
+    const colored: JSONContent = { type: 'text', text: 'rot', marks: [{ type: 'textColor', attrs: { color: 'red' } }] };
+    const doc = { type: 'doc', content: [p(t('m'), t('2', ['superscript']), t(' H'), t('2', ['subscript']), t('O '), colored)] };
+    const md = toMarkdown(doc, ctx);
+    expect(md).toBe('m<sup>2</sup> H<sub>2</sub>O rot\n');
+    expect(fromMarkdown(md, parseCtx).content).toEqual([p(t('m'), t('2', ['superscript']), t(' H'), t('2', ['subscript']), t('O rot'))]);
+  });
+
   it('wählt einen längeren Zaun, wenn der Code ``` enthält', () => {
     const doc = { type: 'doc', content: [{ type: 'codeBlock', attrs: { language: 'md' }, content: [t('```js\nx\n```')] }] };
     expect(toMarkdown(doc, ctx)).toBe('````md\n```js\nx\n```\n````\n');

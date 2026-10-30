@@ -79,6 +79,10 @@ function inline(tokens: Token[], ctx: ParseContext): JSONContent[] {
         if (/^<u>$/i.test(t.content)) toggle('underline', true);
         else if (/^<\/u>$/i.test(t.content)) toggle('underline', false);
         else if (/^<br\s*\/?>$/i.test(t.content)) out.push({ type: 'hardBreak' });
+        else if (/^<(\/?)(sup|sub)>$/i.test(t.content)) {
+          const [, close, tag] = /^<(\/?)(sup|sub)>$/i.exec(t.content)!;
+          toggle(tag.toLowerCase() === 'sup' ? 'superscript' : 'subscript', !close);
+        }
         break;
       case 'link_open': {
         const href = String(t.attrGet('href') ?? '');

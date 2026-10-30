@@ -1,7 +1,28 @@
 import type { Editor } from '@tiptap/core';
 import { CellSelection } from '@tiptap/pm/tables';
 import { BubbleMenu } from '@tiptap/react/menus';
-import { Bold, Check, Code, ExternalLink, Highlighter, Italic, Link2, MessageSquare, PenLine, Shapes, Sparkles, Strikethrough, Underline, type LucideIcon } from 'lucide-react';
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  Bold,
+  Check,
+  ChevronDown,
+  Code,
+  ExternalLink,
+  Highlighter,
+  Italic,
+  Link2,
+  MessageSquare,
+  PenLine,
+  Shapes,
+  Sparkles,
+  Strikethrough,
+  Subscript,
+  Superscript,
+  Underline,
+  type LucideIcon,
+} from 'lucide-react';
 import { useEffect, useMemo, useReducer, useState } from 'react';
 import { openExternal } from '../lib/assets';
 import { newId } from '../lib/ids';
@@ -12,6 +33,10 @@ import { useAiReady } from '../features/ai/store';
 import { REWRITE_ACTIONS } from '../features/ai/write';
 import { startWrite } from '../features/ai/writeSession';
 import { convertToBoard } from '../features/ai/edit/toBoard';
+import { ColorSwatches } from './ColorSwatches';
+import { colorName } from './colors';
+import type { TextAlign } from './format/blockAttrs';
+import { BLOCK_TYPES, blockTypeAt, turnInto } from './format/blockTypes';
 
 interface MarkButton {
   mark: string;
@@ -27,7 +52,21 @@ const MARKS: MarkButton[] = [
   { mark: 'strike', icon: Strikethrough, label: `Durchgestrichen (${formatCombo('Mod+Shift+S')})`, toggle: (e) => e.chain().focus().toggleStrike().run() },
   { mark: 'code', icon: Code, label: `Code (${formatCombo('Mod+E')})`, toggle: (e) => e.chain().focus().toggleCode().run() },
   { mark: 'highlight', icon: Highlighter, label: `Hervorheben (${formatCombo('Mod+Shift+H')})`, toggle: (e) => e.chain().focus().toggleHighlight().run() },
+  { mark: 'superscript', icon: Superscript, label: 'Hochgestellt', toggle: (e) => e.chain().focus().toggleSuperscript().run() },
+  { mark: 'subscript', icon: Subscript, label: 'Tiefgestellt', toggle: (e) => e.chain().focus().toggleSubscript().run() },
 ];
+
+const ALIGN_OPTIONS: [TextAlign, LucideIcon, string][] = [
+  ['left', AlignLeft, 'Linksbündig'],
+  ['center', AlignCenter, 'Zentriert'],
+  ['right', AlignRight, 'Rechtsbündig'],
+];
+
+/** Ausrichtung des Blocks, in dem die Auswahl beginnt. */
+const currentAlign = (editor: Editor): TextAlign => {
+  const align = editor.state.selection.$from.parent.attrs.textAlign as TextAlign | null | undefined;
+  return align ?? 'left';
+};
 
 type ShouldShow = NonNullable<React.ComponentProps<typeof BubbleMenu>['shouldShow']>;
 
@@ -41,7 +80,7 @@ const shouldShow: ShouldShow = ({ editor, state }) => {
 /** Schwebende Leiste bei Textauswahl. Mod+Shift+K öffnet direkt die Link-Eingabe. */
 export function Toolbar({ editor }: { editor: Editor }) {
   const [, rerender] = useReducer((n: number) => n + 1, 0);
-  const [mode, setMode] = useState<'marks' | 'link' | 'comment' | 'ai'>('marks');
+  const [mode, setMode] = useState<'marks' | 'link' | 'comment' | 'ai' | 'turn' | 'color'>('marks');
   const aiReady = useAiReady();
   const options = useMemo(() => ({ placement: 'top' as const, offset: 8, onHide: () => setMode('marks') }), []);
   const setLinkMode = (on: boolean) => setMode(on ? 'link' : 'marks');
@@ -94,6 +133,13 @@ export function Toolbar({ editor }: { editor: Editor }) {
               else editor.commands.focus();
             }}
           />
+        ) : mode === 'turn' ? (
+          <TurnIntoMenu
+            editor={editor}
+            onDone={() => setMode('marks')}
+          />
+        ) : mode === 'color' ? (
+          <ColorMenu editor={editor} />
         ) : (
           <>
             {aiReady && editor.isEditable && (
@@ -109,6 +155,16 @@ export function Toolbar({ editor }: { editor: Editor }) {
                 <div className="mx-0.5 h-5 w-px bg-border" />
               </>
             )}
+            <button
+              title="Umwandeln in …"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setMode('turn')}
+              className="flex h-7 items-center gap-0.5 rounded-md px-2 text-sm text-muted hover:bg-hover"
+            >
+              {BLOCK_TYPES.find((t) => t.id === blockTypeAt(editor.state.selection.$from))?.label ?? 'Text'}
+              <ChevronDown size={13} />
+            </button>
+            <div className="mx-0.5 h-5 w-px bg-border" />
             {MARKS.map(({ mark, icon: Icon, label, toggle }) => (
               <button
                 key={mark}
@@ -124,6 +180,8 @@ export function Toolbar({ editor }: { editor: Editor }) {
                 <Icon size={15} />
               </button>
             ))}
+            <ColorButton editor={editor} onOpen={() => setMode('color')} />
+            <AlignButton editor={editor} />
             <div className="mx-0.5 h-5 w-px bg-border" />
             <button
               title={`Link (${formatCombo('Mod+Shift+K')})`}
@@ -198,6 +256,94 @@ export function CommentBubble({ editor }: { editor: Editor }) {
         )}
       </div>
     </BubbleMenu>
+  );
+}
+
+/** Knopf „A“ mit der aktuellen Text- bzw. Hintergrundfarbe darunter. */
+function ColorButton({ editor, onOpen }: { editor: Editor; onOpen: () => void }) {
+  const text = colorName(editor.getAttributes('textColor').color);
+  const bg = colorName(editor.getAttributes('highlight').color);
+  return (
+    <button
+      title="Farbe"
+      aria-label="Farbe"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onOpen}
+      className="flex h-7 items-center gap-0.5 rounded-md px-1.5 hover:bg-hover"
+    >
+      <span
+        className="flex h-5 w-5 items-center justify-center rounded text-[13px] font-semibold"
+        style={{
+          color: text ? `var(--c-tag-${text}-fg)` : 'var(--c-muted)',
+          background: bg ? `var(--c-tag-${bg}-bg)` : undefined,
+        }}
+      >
+        A
+      </span>
+      <ChevronDown size={12} className="text-faint" />
+    </button>
+  );
+}
+
+/** Ausrichtung: ein Knopf, der links → zentriert → rechts durchschaltet. */
+function AlignButton({ editor }: { editor: Editor }) {
+  const current = currentAlign(editor);
+  const index = ALIGN_OPTIONS.findIndex(([value]) => value === current);
+  const [, Icon] = ALIGN_OPTIONS[index];
+  const [next, , nextLabel] = ALIGN_OPTIONS[(index + 1) % ALIGN_OPTIONS.length];
+  return (
+    <button
+      title={`Ausrichtung: ${ALIGN_OPTIONS[index][2]} (klicken: ${nextLabel})`}
+      aria-label="Ausrichtung"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => editor.chain().focus().setTextAlign(next === 'left' ? null : next).run()}
+      className={cx('flex h-7 w-7 items-center justify-center rounded-md hover:bg-hover', current === 'left' ? 'text-muted' : 'text-accent')}
+    >
+      <Icon size={15} />
+    </button>
+  );
+}
+
+function ColorMenu({ editor }: { editor: Editor }) {
+  return (
+    <div className="flex w-[290px] flex-col gap-1 p-1">
+      <div className="text-2xs text-faint">Textfarbe</div>
+      <ColorSwatches
+        kind="text"
+        value={colorName(editor.getAttributes('textColor').color)}
+        onPick={(color) => (color ? editor.chain().focus().setTextColor(color).run() : editor.chain().focus().unsetTextColor().run())}
+      />
+      <div className="mt-1 text-2xs text-faint">Hintergrund</div>
+      <ColorSwatches
+        kind="bg"
+        value={colorName(editor.getAttributes('highlight').color)}
+        onPick={(color) => (color ? editor.chain().focus().setHighlight({ color }).run() : editor.chain().focus().unsetHighlight().run())}
+      />
+    </div>
+  );
+}
+
+function TurnIntoMenu({ editor, onDone }: { editor: Editor; onDone: () => void }) {
+  const current = blockTypeAt(editor.state.selection.$from);
+  return (
+    <div className="flex w-[200px] flex-col p-0.5" role="menu">
+      {BLOCK_TYPES.map((type) => (
+        <button
+          key={type.id}
+          role="menuitem"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            turnInto(editor, type.id);
+            onDone();
+          }}
+          className={cx('flex h-7 items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-hover', current === type.id ? 'text-accent' : 'text-text')}
+        >
+          <type.icon size={14} className={current === type.id ? '' : 'text-muted'} />
+          <span className="flex-1">{type.label}</span>
+          {current === type.id && <Check size={13} />}
+        </button>
+      ))}
+    </div>
   );
 }
 

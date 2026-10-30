@@ -10,7 +10,7 @@ export interface SerializeContext {
 type Mark = NonNullable<JSONContent['marks']>[number];
 
 /** Reihenfolge von außen nach innen; Code muss innen liegen, Links außen. */
-const MARK_ORDER = ['link', 'bold', 'italic', 'strike', 'highlight', 'underline', 'code'];
+const MARK_ORDER = ['link', 'bold', 'italic', 'strike', 'highlight', 'underline', 'superscript', 'subscript', 'code'];
 
 const sortMarks = (marks: Mark[] = []) =>
   marks.filter((m) => MARK_ORDER.includes(m.type)).sort((a, b) => MARK_ORDER.indexOf(a.type) - MARK_ORDER.indexOf(b.type));
@@ -31,6 +31,10 @@ function openMark(mark: Mark): string {
       return '==';
     case 'underline':
       return '<u>';
+    case 'superscript':
+      return '<sup>';
+    case 'subscript':
+      return '<sub>';
     default:
       return '`';
   }
@@ -39,6 +43,8 @@ function openMark(mark: Mark): string {
 function closeMark(mark: Mark): string {
   if (mark.type === 'link') return `](${encodeHref(String(mark.attrs?.href ?? ''))})`;
   if (mark.type === 'underline') return '</u>';
+  if (mark.type === 'superscript') return '</sup>';
+  if (mark.type === 'subscript') return '</sub>';
   return openMark(mark);
 }
 
