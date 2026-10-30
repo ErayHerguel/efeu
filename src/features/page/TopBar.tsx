@@ -1,7 +1,9 @@
-import { ChevronLeft, ChevronRight, Copy, CopyPlus, History, Layers, LayoutTemplate, House, MessageSquare, MoreHorizontal, MoveHorizontal, Mic, PanelLeft, Printer, Sparkles, Star, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, CopyPlus, History, Layers, LayoutTemplate, House, MessageSquare, MoreHorizontal, MoveHorizontal, Mic, PanelLeft, PenTool, Printer, Sparkles, Star, Trash2 } from 'lucide-react';
+import { cx } from '../../lib/cx';
 import { useAiReady } from '../ai/store';
 import { openAiBar } from '../ai/edit/session';
 import { generateCards } from '../ai/cards';
+import { toggleInk, useInk } from '../../editor/ink/ink';
 import { suggestTitle } from '../ai/title';
 import { openLectureStart } from '../lecture/LectureUI';
 import { useLecture } from '../lecture/lecture';
@@ -49,6 +51,7 @@ export function TopBar({ pageId }: { pageId: string | null }) {
   const closeMenu = useCallback(() => setMenu(null), []);
   const editable = useCanEdit(pageId);
   const aiReady = useAiReady();
+  const drawing = useInk((s) => s.active);
   const recording = useLecture((s) => s.status !== 'idle' && s.pageId === pageId);
 
   return (
@@ -103,6 +106,20 @@ export function TopBar({ pageId }: { pageId: string | null }) {
           className="flex h-7 items-center gap-1 rounded-md px-2 text-sm text-accent hover:bg-hover"
         >
           <Sparkles size={15} /> KI
+        </button>
+      )}
+      {page?.type === 'page' && editable && (
+        <button
+          aria-label="Zeichnen"
+          aria-pressed={drawing}
+          title={`Zeichnen: einkreisen, verbinden, Pfeile (${formatCombo('Mod+Alt+D')})`}
+          onClick={() => toggleInk()}
+          className={cx(
+            'flex h-7 w-7 items-center justify-center rounded-md hover:bg-hover',
+            drawing ? 'bg-accent-soft text-accent' : 'text-muted hover:text-text',
+          )}
+        >
+          <PenTool size={16} />
         </button>
       )}
       {page && !GUEST && !member && <PageShareButton pageId={page.id} />}

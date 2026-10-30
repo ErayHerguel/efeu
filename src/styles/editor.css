@@ -545,6 +545,49 @@ div.block-handle-button {
   line-height: 0;
 }
 
+/* ---------- Zeichnen ---------- */
+:root {
+  --ink-red: #e03e3e;
+  --ink-orange: #e8850c;
+  --ink-yellow: #f2c80f;
+  --ink-green: #2a9d5c;
+  --ink-blue: #2f6fde;
+  --ink-purple: #8b5cf6;
+  --ink-pink: #e0559b;
+}
+.dark {
+  --ink-red: #ff6b6b;
+  --ink-orange: #ffa94d;
+  --ink-yellow: #ffd43b;
+  --ink-green: #51cf66;
+  --ink-blue: #6ea8fe;
+  --ink-purple: #b197fc;
+  --ink-pink: #f783ac;
+}
+.ink-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 5;
+}
+.ink-marker {
+  opacity: 0.38;
+}
+.ink-capture {
+  position: absolute;
+  top: -24px;
+  bottom: -24px;
+  z-index: 6;
+  touch-action: none;
+  cursor: crosshair;
+}
+.ink-capture.is-eraser {
+  cursor: cell;
+}
+
 /* ---------- Formeln ---------- */
 .efeu-editor .math-inline {
   padding: 0 2px;

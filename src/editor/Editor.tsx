@@ -1,7 +1,7 @@
 import type { JSONContent } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { EditorContent, useEditor, type Editor as TiptapEditor } from '@tiptap/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadDoc, saveContent } from '../db/content';
 import { flush, schedule } from '../db/saveQueue';
 import { useCanEdit, useCollab, type DocBinding } from '../features/collab/sources';
@@ -13,6 +13,7 @@ import { createExtensions } from './extensions';
 import { docText } from './text';
 import { MathEditor } from './MathEditor';
 import { BlockMenu } from './BlockMenu';
+import { InkLayer } from './ink/InkLayer';
 import { TableControls } from './TableControls';
 import { CommentBubble, Toolbar } from './Toolbar';
 
@@ -117,6 +118,7 @@ function BoundEditor({ pageId, binding }: { pageId: string; binding: DocBinding 
 }
 
 function EditorChrome({ pageId, editor }: { pageId: string; editor: TiptapEditor }) {
+  const wrapper = useRef<HTMLDivElement>(null);
   useEffect(() => {
     setActiveEditor(editor);
     return () => {
@@ -132,7 +134,10 @@ function EditorChrome({ pageId, editor }: { pageId: string; editor: TiptapEditor
 
   return (
     <>
-      <EditorContent editor={editor} className="relative" />
+      <div ref={wrapper} className="relative">
+        <EditorContent editor={editor} className="relative" />
+        <InkLayer editor={editor} wrapper={wrapper} />
+      </div>
       <Toolbar editor={editor} />
       <CommentBubble editor={editor} />
       <TableControls editor={editor} />

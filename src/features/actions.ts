@@ -12,6 +12,7 @@ import { backupNow, exportCurrentPage, exportWorkspace, importFolder, importMark
 import { usePages, type Group } from '../store/pages';
 import { startLearning } from './cards/learn';
 import { generateCards } from './ai/cards';
+import { toggleInk } from '../editor/ink/ink';
 import { useUI, type Theme } from '../store/ui';
 import { quitApp } from './lifecycle';
 import { GUEST } from '../lib/mode';
@@ -225,6 +226,15 @@ export const actions: AppAction[] = [
       const page = currentPage();
       if (page) usePages.getState().update(page.id, { fullWidth: !page.fullWidth });
     },
+  },
+  {
+    id: 'page.draw',
+    label: 'Zeichnen (Stift, Textmarker, Pfeile)',
+    group: 'Seite',
+    keys: 'Mod+Alt+D',
+    menu: 'edit',
+    when: () => currentPage()?.type === 'page' && getActiveEditor()?.isEditable === true,
+    run: () => toggleInk(),
   },
   {
     id: 'page.trash',

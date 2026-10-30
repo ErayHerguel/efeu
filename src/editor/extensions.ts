@@ -25,6 +25,7 @@ import { Mention } from './nodes/mention';
 import { MathBlock, MathInline } from './nodes/math';
 import { CardLines } from './cardLines';
 import { BlockAttrs } from './format/blockAttrs';
+import { Ink } from './ink/ink';
 import { ColorHighlight, Subscript, Superscript, TextColor } from './format/marks';
 import type { DocBinding } from '../features/collab/sources';
 
@@ -77,6 +78,7 @@ export function createExtensions(pageId: string, collab?: Pick<DocBinding, 'doc'
     Superscript,
     Subscript,
     BlockAttrs,
+    Ink,
     Callout,
     Toggle,
     Image,
