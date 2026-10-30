@@ -44,5 +44,10 @@ export function jsonText(doc: JSONContent): string {
     children.forEach(walk);
   };
   walk(doc);
+  // Schwebende Textfelder der Zeichnung (Attribut „ink“ der obersten Blöcke) sind auch durchsuchbar.
+  for (const node of doc.content ?? []) {
+    const ink: unknown = node.attrs?.ink;
+    if (Array.isArray(ink)) for (const item of ink) if (item?.tool === 'text' && typeof item.text === 'string') blocks.push(item.text);
+  }
   return blocks.join('\n');
 }

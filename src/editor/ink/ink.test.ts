@@ -3,7 +3,9 @@ import type { Editor } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTestEditor, p } from '../../test/editor';
-import { hitsStroke, simplify, strokesOf, validStrokes, type Stroke } from './ink';
+import { docText } from '../text';
+import { jsonText } from '../../lib/doc';
+import { arrowMid, controlPoint, hitsStroke, moveStroke, simplify, strokeBox, strokesOf, validStrokes, type Stroke } from './ink';
 
 let editor: Editor;
 afterEach(() => editor?.destroy());
@@ -46,5 +48,27 @@ describe('Zeichnen', () => {
     const s = stroke('s', [0, 0, 0.5, 100, 0, 0.5]);
     expect(hitsStroke(s, 50, 5)).toBe(true);
     expect(hitsStroke(s, 50, 30)).toBe(false);
+  });
+
+  it('biegt Pfeile, verschiebt Elemente und prüft Textfelder', () => {
+    const arrow: Stroke = { id: 'a', tool: 'arrow', color: 'red', points: [0, 0, 0.5, 100, 0, 0.5], bend: [50, 40], heads: 'both', dash: true };
+    expect(validStrokes([arrow])).toHaveLength(1);
+    // Die Kurve läuft durch den Biegepunkt: Treffer dort, nicht auf der Geraden.
+    expect(hitsStroke(arrow, 50, 40)).toBe(true);
+    expect(hitsStroke(arrow, 50, 0, 4)).toBe(false);
+    expect(controlPoint(arrow)).toEqual([50, 80]);
+    expect(strokeBox(arrow).bottom).toBeGreaterThan(40);
+    const moved = moveStroke(arrow, 10, 5);
+    expect(moved.points).toEqual([10, 5, 0.5, 110, 5, 0.5]);
+    expect(arrowMid(moved)).toEqual([60, 45]);
+    const text: Stroke = { id: 't', tool: 'text', color: 'blue', points: [20, -10, 0.5], text: 'Wichtig!', size: 'l', hand: true };
+    expect(validStrokes([text, { ...text, size: 'xl' }, { ...text, text: 5 }])).toEqual([text]);
+  });
+
+  it('macht Textfelder durchsuchbar', () => {
+    editor = createTestEditor({ type: 'doc', content: [p('Absatz')] });
+    editor.commands.setInk(0, [{ id: 't', tool: 'text', color: 'text', points: [0, 0, 0.5], text: 'Randnotiz' }]);
+    expect(docText(editor.state.doc, () => '')).toContain('Randnotiz');
+    expect(jsonText(editor.getJSON())).toContain('Randnotiz');
   });
 });
