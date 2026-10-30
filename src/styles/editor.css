@@ -545,6 +545,38 @@ div.block-handle-button {
   line-height: 0;
 }
 
+/* ---------- Formeln ---------- */
+.efeu-editor .math-inline {
+  padding: 0 2px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.efeu-editor .math-block {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  text-align: center;
+  cursor: pointer;
+}
+.efeu-editor .math-inline:hover,
+.efeu-editor .math-block:hover {
+  background: var(--c-hover);
+}
+.efeu-editor .math-inline.ProseMirror-selectednode,
+.efeu-editor .math-block.ProseMirror-selectednode {
+  background: var(--c-accent-soft);
+}
+.efeu-editor .math-inline.is-empty,
+.efeu-editor .math-block.is-empty,
+.math-preview.is-empty {
+  color: var(--c-faint);
+  font-size: 0.9em;
+}
+.efeu-editor .math-block .katex-display {
+  margin: 0;
+}
+
 /* ---------- Tabellen ---------- */
 .efeu-editor .tableWrapper {
   margin: 8px 0 20px;

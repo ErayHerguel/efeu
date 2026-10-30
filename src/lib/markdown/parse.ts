@@ -1,6 +1,7 @@
 import type { JSONContent } from '@tiptap/core';
 import MarkdownIt, { type Token } from 'markdown-it';
 import markPlugin from 'markdown-it-mark';
+import { mathPlugin } from './math';
 
 export interface ParseContext {
   /** Liefert die Seiten-ID für einen relativen Link oder [[Titel]], sonst null. */
@@ -9,7 +10,7 @@ export interface ParseContext {
   image(src: string): string | null;
 }
 
-const md = new MarkdownIt({ html: true, linkify: false }).use(markPlugin);
+const md = new MarkdownIt({ html: true, linkify: false }).use(markPlugin).use(mathPlugin);
 
 type MarkSpec = NonNullable<JSONContent['marks']>[number];
 
@@ -74,6 +75,9 @@ function inline(tokens: Token[], ctx: ParseContext): JSONContent[] {
       case 'mark_open':
       case 'mark_close':
         toggle('highlight', t.type.endsWith('open'));
+        break;
+      case 'math_inline':
+        if (!pageLinkOpen) out.push({ type: 'mathInline', attrs: { latex: t.content } });
         break;
       case 'html_inline':
         if (/^<u>$/i.test(t.content)) toggle('underline', true);
@@ -151,6 +155,10 @@ function blocks(tokens: Token[], ctx: ParseContext): JSONContent[] {
         i += 3;
         break;
       }
+      case 'math_block':
+        out.push({ type: 'mathBlock', attrs: { latex: tokens[i].content } });
+        i += 1;
+        break;
       case 'bullet_list_open':
       case 'ordered_list_open': {
         const end = until(i);

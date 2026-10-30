@@ -45,6 +45,23 @@ describe('Markdown-Export', () => {
     expect(fromMarkdown(md, parseCtx).content).toEqual([p(t('m'), t('2', ['superscript']), t(' H'), t('2', ['subscript']), t('O rot'))]);
   });
 
+  it('schreibt und liest Formeln, Dollarzeichen im Text bleiben Text', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        p(t('Satz '), { type: 'mathInline', attrs: { latex: 'a^2+b^2' } }, t(' kostet $5')),
+        { type: 'mathBlock', attrs: { latex: '\\int_0^1 x\\,dx' } },
+      ],
+    };
+    const md = toMarkdown(doc, ctx);
+    expect(md).toBe('Satz $a^2+b^2$ kostet \\$5\n\n$$\n\\int_0^1 x\\,dx\n$$\n');
+    expect(fromMarkdown(md, parseCtx).content).toEqual(doc.content);
+    expect(fromMarkdown('Von $5 bis $10 und $$x$$\n\n$$E=mc^2$$', parseCtx).content).toEqual([
+      p(t('Von $5 bis $10 und $$x$$')),
+      { type: 'mathBlock', attrs: { latex: 'E=mc^2' } },
+    ]);
+  });
+
   it('wählt einen längeren Zaun, wenn der Code ``` enthält', () => {
     const doc = { type: 'doc', content: [{ type: 'codeBlock', attrs: { language: 'md' }, content: [t('```js\nx\n```')] }] };
     expect(toMarkdown(doc, ctx)).toBe('````md\n```js\nx\n```\n````\n');

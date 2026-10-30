@@ -51,7 +51,7 @@ function closeMark(mark: Mark): string {
 const encodeHref = (href: string) => href.replace(/[ ()]/g, (c) => encodeURIComponent(c));
 
 export function escapeText(text: string): string {
-  return text.replace(/([\\`*_[\]<>~=|])/g, '\\$1');
+  return text.replace(/([\\`*_[\]<>~=|$])/g, '\\$1');
 }
 
 function inline(nodes: JSONContent[] = [], ctx: SerializeContext): string {
@@ -74,6 +74,7 @@ function inline(nodes: JSONContent[] = [], ctx: SerializeContext): string {
         const target = ctx.page(String(node.attrs?.pageId));
         out += target.href ? `[${escapeText(target.title)}](${target.href})` : `[[${target.title}]]`;
       } else if (node.type === 'mention') out += escapeText(`@${String(node.attrs?.label ?? '')}`);
+      else if (node.type === 'mathInline') out += `$${String(node.attrs?.latex ?? '')}$`;
       continue;
     }
 
@@ -153,6 +154,8 @@ function block(node: JSONContent, ctx: SerializeContext): string {
     }
     case 'horizontalRule':
       return '---';
+    case 'mathBlock':
+      return `$$\n${String(node.attrs?.latex ?? '')}\n$$`;
     case 'image': {
       const caption = String(node.attrs?.caption ?? '');
       const title = caption ? ` "${caption.replace(/"/g, '\\"')}"` : '';

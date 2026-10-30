@@ -10,6 +10,7 @@ export function docText(doc: PMNode, titleOf: (pageId: string) => string): strin
     if (leaf.type.name === 'image') return String(leaf.attrs.caption ?? '');
     if (leaf.type.name === 'hardBreak') return '\n';
     if (leaf.type.name === 'mention') return `@${leaf.attrs.label}`;
+    if (leaf.type.name === 'mathInline' || leaf.type.name === 'mathBlock') return String(leaf.attrs.latex ?? '');
     return '';
   });
 }

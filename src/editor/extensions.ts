@@ -22,6 +22,7 @@ import { TableCell, TableHeader } from './nodes/table';
 import { Toggle } from './nodes/toggle';
 import { MentionSuggestion, PageLinkSuggestion, SlashCommand } from './suggest/extensions';
 import { Mention } from './nodes/mention';
+import { MathBlock, MathInline } from './nodes/math';
 import { CardLines } from './cardLines';
 import { BlockAttrs } from './format/blockAttrs';
 import { ColorHighlight, Subscript, Superscript, TextColor } from './format/marks';
@@ -92,6 +93,8 @@ export function createExtensions(pageId: string, collab?: Pick<DocBinding, 'doc'
     PageRef,
     PageLink,
     Mention,
+    MathInline,
+    MathBlock,
     Placeholder.configure({
       placeholder: ({ node }) =>
         node.type.name === 'heading' ? `Überschrift ${node.attrs.level}` : 'Tippe „/“ für Befehle oder „[[“ für Seitenlinks …',
