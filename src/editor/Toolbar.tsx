@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/core';
+import { CellSelection } from '@tiptap/pm/tables';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { Bold, Check, Code, ExternalLink, Highlighter, Italic, Link2, MessageSquare, PenLine, Shapes, Sparkles, Strikethrough, Underline, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useReducer, useState } from 'react';
@@ -32,7 +33,7 @@ type ShouldShow = NonNullable<React.ComponentProps<typeof BubbleMenu>['shouldSho
 
 const shouldShow: ShouldShow = ({ editor, state }) => {
   const { selection } = state;
-  if (selection.empty || !editor.isEditable) return false;
+  if (selection.empty || !editor.isEditable || selection instanceof CellSelection) return false;
   if (editor.isActive('codeBlock') || editor.isActive('image') || editor.isActive('pageRef')) return false;
   return state.doc.textBetween(selection.from, selection.to).length > 0;
 };
@@ -152,7 +153,6 @@ export function Toolbar({ editor }: { editor: Editor }) {
 }
 
 const commentShow: ShouldShow = ({ editor, state }) => state.selection.empty && editor.isActive('comment');
-const tableShow: ShouldShow = ({ editor }) => editor.isEditable && editor.isActive('table');
 
 /** Zeigt den Kommentar, wenn der Cursor in kommentiertem Text steht. */
 export function CommentBubble({ editor }: { editor: Editor }) {
@@ -196,33 +196,6 @@ export function CommentBubble({ editor }: { editor: Editor }) {
             </div>
           </>
         )}
-      </div>
-    </BubbleMenu>
-  );
-}
-
-/** Zeilen und Spalten einer Tabelle bearbeiten. */
-export function TableMenu({ editor }: { editor: Editor }) {
-  const options = useMemo(() => ({ placement: 'top-start' as const, offset: 8 }), []);
-  const action = (label: string, run: () => boolean, danger = false) => (
-    <button
-      key={label}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={run}
-      className={cx('h-7 rounded-md px-2 text-xs hover:bg-hover', danger ? 'text-danger' : 'text-muted')}
-    >
-      {label}
-    </button>
-  );
-  return (
-    <BubbleMenu editor={editor} pluginKey="tableMenu" shouldShow={tableShow} options={options} className="z-30">
-      <div className="flex items-center gap-0.5 rounded-lg bg-surface p-1 shadow-popover">
-        {action('+ Zeile', () => editor.chain().focus().addRowAfter().run())}
-        {action('+ Spalte', () => editor.chain().focus().addColumnAfter().run())}
-        {action('Zeile löschen', () => editor.chain().focus().deleteRow().run())}
-        {action('Spalte löschen', () => editor.chain().focus().deleteColumn().run())}
-        {action('Kopfzeile', () => editor.chain().focus().toggleHeaderRow().run())}
-        {action('Tabelle löschen', () => editor.chain().focus().deleteTable().run(), true)}
       </div>
     </BubbleMenu>
   );

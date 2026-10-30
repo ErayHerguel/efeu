@@ -11,7 +11,8 @@ import { useUI } from '../store/ui';
 import { setActiveEditor } from './active';
 import { createExtensions } from './extensions';
 import { docText } from './text';
-import { CommentBubble, TableMenu, Toolbar } from './Toolbar';
+import { TableControls } from './TableControls';
+import { CommentBubble, Toolbar } from './Toolbar';
 
 type LoadState = { status: 'loading' } | { status: 'ready'; doc: JSONContent | null } | { status: 'error'; message: string };
 
@@ -132,7 +133,7 @@ function EditorChrome({ pageId, editor }: { pageId: string; editor: TiptapEditor
       <EditorContent editor={editor} className="relative" />
       <Toolbar editor={editor} />
       <CommentBubble editor={editor} />
-      <TableMenu editor={editor} />
+      <TableControls editor={editor} />
     </>
   );
 }

@@ -511,7 +511,7 @@ div.block-handle-button {
 
 /* ---------- Tabellen ---------- */
 .efeu-editor .tableWrapper {
-  margin: 8px 0;
+  margin: 8px 0 20px;
   overflow-x: auto;
 }
 .efeu-editor table {
@@ -535,6 +535,79 @@ div.block-handle-button {
 .efeu-editor td > p,
 .efeu-editor th > p {
   padding: 0;
+}
+.efeu-editor td[data-align='center'],
+.efeu-editor th[data-align='center'] {
+  text-align: center;
+}
+.efeu-editor td[data-align='right'],
+.efeu-editor th[data-align='right'] {
+  text-align: right;
+}
+.efeu-editor td[data-bg='gray'], .efeu-editor th[data-bg='gray'] { background: var(--c-tag-gray-bg); }
+.efeu-editor td[data-bg='brown'], .efeu-editor th[data-bg='brown'] { background: var(--c-tag-brown-bg); }
+.efeu-editor td[data-bg='orange'], .efeu-editor th[data-bg='orange'] { background: var(--c-tag-orange-bg); }
+.efeu-editor td[data-bg='yellow'], .efeu-editor th[data-bg='yellow'] { background: var(--c-tag-yellow-bg); }
+.efeu-editor td[data-bg='green'], .efeu-editor th[data-bg='green'] { background: var(--c-tag-green-bg); }
+.efeu-editor td[data-bg='blue'], .efeu-editor th[data-bg='blue'] { background: var(--c-tag-blue-bg); }
+.efeu-editor td[data-bg='purple'], .efeu-editor th[data-bg='purple'] { background: var(--c-tag-purple-bg); }
+.efeu-editor td[data-bg='pink'], .efeu-editor th[data-bg='pink'] { background: var(--c-tag-pink-bg); }
+.efeu-editor td[data-bg='red'], .efeu-editor th[data-bg='red'] { background: var(--c-tag-red-bg); }
+
+/* Griffe an Zeilen/Spalten und „+“-Leisten (liegen fixiert über der Tabelle) */
+.table-controls > button {
+  position: fixed;
+  z-index: 30;
+}
+.table-grip {
+  border-radius: 4px;
+  border: 1px solid var(--c-border-strong);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-popover);
+  opacity: 0.85;
+}
+.table-grip.is-column {
+  width: 24px;
+  height: 12px;
+}
+.table-grip.is-row {
+  width: 12px;
+  height: 24px;
+}
+.table-grip::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  background-image: radial-gradient(circle, var(--c-muted) 1px, transparent 1.3px);
+  background-size: 4px 4px;
+  background-position: center;
+}
+.table-grip:hover,
+.table-grip.is-active {
+  opacity: 1;
+  border-color: var(--c-accent);
+  background: var(--c-accent-soft);
+}
+.table-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--c-faint);
+  background: var(--c-hover);
+  opacity: 0.6;
+  transition: opacity 120ms;
+}
+.table-add:hover {
+  opacity: 1;
+  color: var(--c-text);
+  background: var(--c-active);
+}
+.table-add.is-row {
+  height: 16px;
+}
+.table-add.is-column {
+  width: 16px;
 }
 .efeu-editor .selectedCell::after {
   content: '';
