@@ -1,4 +1,5 @@
 import { mergeAttributes, Node } from '@tiptap/core';
+import { showBlockColor } from '../format/blockAttrs';
 import { el } from '../dom';
 import { unwrapAtStart } from './unwrap';
 
@@ -31,6 +32,7 @@ export const Callout = Node.create({
   addNodeView() {
     return ({ node, getPos, editor }) => {
       const dom = el('div', 'callout');
+      showBlockColor(dom, node.attrs.blockColor);
       const button = el('button', 'callout-icon');
       button.type = 'button';
       button.contentEditable = 'false';
@@ -51,10 +53,11 @@ export const Callout = Node.create({
         contentDOM: content,
         update: (updated) => {
           if (updated.type.name !== 'callout') return false;
+          showBlockColor(dom, updated.attrs.blockColor);
           button.textContent = updated.attrs.icon;
           return true;
         },
-        ignoreMutation: (mutation) => button.contains(mutation.target),
+        ignoreMutation: (mutation) => button.contains(mutation.target) || (mutation.type === 'attributes' && mutation.target === dom),
       };
     };
   },

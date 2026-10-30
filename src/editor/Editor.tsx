@@ -11,6 +11,7 @@ import { useUI } from '../store/ui';
 import { setActiveEditor } from './active';
 import { createExtensions } from './extensions';
 import { docText } from './text';
+import { BlockMenu } from './BlockMenu';
 import { TableControls } from './TableControls';
 import { CommentBubble, Toolbar } from './Toolbar';
 
@@ -134,6 +135,7 @@ function EditorChrome({ pageId, editor }: { pageId: string; editor: TiptapEditor
       <Toolbar editor={editor} />
       <CommentBubble editor={editor} />
       <TableControls editor={editor} />
+      <BlockMenu editor={editor} />
     </>
   );
 }

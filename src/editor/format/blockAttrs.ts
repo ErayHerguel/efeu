@@ -7,7 +7,7 @@ const ALIGNS = new Set<string>(['center', 'right']);
 /** Blöcke, die eine Ausrichtung haben können. */
 const ALIGNABLE = ['paragraph', 'heading'];
 /** Blöcke, die eine Farbe haben können (Text- oder Hintergrundfarbe für den ganzen Block). */
-export const COLORABLE = ['paragraph', 'heading', 'blockquote', 'bulletList', 'orderedList', 'taskList', 'toggle', 'callout'];
+export const COLORABLE = ['paragraph', 'heading', 'blockquote', 'listItem', 'taskItem', 'toggle', 'callout'];
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -25,6 +25,13 @@ export function blockColor(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const [name, bg] = value.split('-');
   return colorName(name) && (bg === undefined || bg === 'bg') ? value : null;
+}
+
+/** Für Node-Views, die ihr DOM selbst bauen (Callout, Toggle): Blockfarbe am Element setzen. */
+export function showBlockColor(dom: HTMLElement, value: unknown): void {
+  const color = blockColor(value);
+  if (color) dom.dataset.blockColor = color;
+  else delete dom.dataset.blockColor;
 }
 
 /** Ausrichtung (Absätze, Überschriften) und Blockfarben als zusätzliche Attribute vorhandener Blöcke. */

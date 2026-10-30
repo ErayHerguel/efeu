@@ -3,6 +3,7 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 import { NodeSelection, Plugin, PluginKey, TextSelection, type Transaction } from '@tiptap/pm/state';
 import { Mapping, type Mappable } from '@tiptap/pm/transform';
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view';
+import { openBlockMenu } from './blockMenuStore';
 import { el, icon } from './dom';
 
 const LIST_ITEMS = new Set(['listItem', 'taskItem']);
@@ -160,7 +161,7 @@ export const DragHandle = Extension.create({
     plus.append(icon('plus', 16));
     const grip = el('div', 'block-handle-button');
     grip.draggable = true;
-    grip.title = 'Ziehen: verschieben\nKlicken: auswählen';
+    grip.title = 'Ziehen: verschieben\nKlicken: Menü';
     grip.append(icon('grip', 16));
     handle.append(plus, grip);
 
@@ -241,6 +242,7 @@ export const DragHandle = Extension.create({
       const view = editor.view;
       view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, current)));
       view.focus();
+      openBlockMenu(current, grip.getBoundingClientRect());
     });
     grip.addEventListener('dragstart', (event) => {
       if (current === null || !event.dataTransfer) return;

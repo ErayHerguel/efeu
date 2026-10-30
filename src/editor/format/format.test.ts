@@ -38,4 +38,21 @@ describe('Formatierung', () => {
     editor.commands.setBlockColor(0, 'nope');
     expect(editor.state.doc.child(0).attrs.blockColor).toBeNull();
   });
+
+  it('färbt Callouts und Listeneinträge, auch in der Node-View', () => {
+    editor = createTestEditor({
+      type: 'doc',
+      content: [
+        { type: 'callout', content: [p('Hinweis')] },
+        { type: 'bulletList', content: [{ type: 'listItem', content: [p('Punkt')] }] },
+      ],
+    });
+    const calloutSize = editor.state.doc.child(0).nodeSize;
+    expect(editor.commands.setBlockColor(0, 'red-bg')).toBe(true);
+    expect(editor.commands.setBlockColor(calloutSize + 1, 'blue')).toBe(true);
+    expect(editor.view.dom.querySelector('.callout')?.getAttribute('data-block-color')).toBe('red-bg');
+    expect(editor.view.dom.querySelector('li')?.getAttribute('data-block-color')).toBe('blue');
+    // Die Liste selbst ist kein färbbarer Block.
+    expect(editor.commands.setBlockColor(calloutSize, 'blue')).toBe(false);
+  });
 });

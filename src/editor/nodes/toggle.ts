@@ -1,5 +1,6 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
+import { showBlockColor } from '../format/blockAttrs';
 import { el, icon } from '../dom';
 import { unwrapAtStart } from './unwrap';
 
@@ -31,6 +32,7 @@ export const Toggle = Node.create({
   addNodeView() {
     return ({ node, getPos, editor }) => {
       const dom = el('div', 'toggle');
+      showBlockColor(dom, node.attrs.blockColor);
       dom.dataset.open = String(node.attrs.open);
       const button = el('button', 'toggle-button');
       button.type = 'button';
@@ -51,6 +53,7 @@ export const Toggle = Node.create({
         contentDOM: content,
         update: (updated) => {
           if (updated.type.name !== 'toggle') return false;
+          showBlockColor(dom, updated.attrs.blockColor);
           dom.dataset.open = String(updated.attrs.open);
           return true;
         },

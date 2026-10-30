@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/core';
+import { NodeSelection } from '@tiptap/pm/state';
 import { CellSelection } from '@tiptap/pm/tables';
 import { BubbleMenu } from '@tiptap/react/menus';
 import {
@@ -72,7 +73,8 @@ type ShouldShow = NonNullable<React.ComponentProps<typeof BubbleMenu>['shouldSho
 
 const shouldShow: ShouldShow = ({ editor, state }) => {
   const { selection } = state;
-  if (selection.empty || !editor.isEditable || selection instanceof CellSelection) return false;
+  // Ganze Blöcke (Klick auf den Greifer) und Tabellenzellen haben eigene Menüs.
+  if (selection.empty || !editor.isEditable || selection instanceof CellSelection || selection instanceof NodeSelection) return false;
   if (editor.isActive('codeBlock') || editor.isActive('image') || editor.isActive('pageRef')) return false;
   return state.doc.textBetween(selection.from, selection.to).length > 0;
 };
