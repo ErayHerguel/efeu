@@ -35,9 +35,29 @@ import { REWRITE_ACTIONS } from '../features/ai/write';
 import { startWrite } from '../features/ai/writeSession';
 import { convertToBoard } from '../features/ai/edit/toBoard';
 import { ColorSwatches } from './ColorSwatches';
-import { colorName } from './colors';
+import { colorName, type ColorName } from './colors';
 import type { TextAlign } from './format/blockAttrs';
 import { BLOCK_TYPES, blockTypeAt, turnInto } from './format/blockTypes';
+
+const HIGHLIGHT_KEY = 'efeu.lastHighlight';
+
+/** Zuletzt gewählte Textmarkerfarbe (null = klassisches Gelb), pro Gerät gemerkt. */
+function lastHighlight(): ColorName | null {
+  try {
+    return colorName(localStorage.getItem(HIGHLIGHT_KEY));
+  } catch {
+    return null;
+  }
+}
+
+function rememberHighlight(color: ColorName | null) {
+  try {
+    if (color) localStorage.setItem(HIGHLIGHT_KEY, color);
+    else localStorage.removeItem(HIGHLIGHT_KEY);
+  } catch {
+    // Ohne Speicher bleibt es beim Gelb.
+  }
+}
 
 interface MarkButton {
   mark: string;
@@ -52,7 +72,17 @@ const MARKS: MarkButton[] = [
   { mark: 'underline', icon: Underline, label: `Unterstrichen (${formatCombo('Mod+U')})`, toggle: (e) => e.chain().focus().toggleUnderline().run() },
   { mark: 'strike', icon: Strikethrough, label: `Durchgestrichen (${formatCombo('Mod+Shift+S')})`, toggle: (e) => e.chain().focus().toggleStrike().run() },
   { mark: 'code', icon: Code, label: `Code (${formatCombo('Mod+E')})`, toggle: (e) => e.chain().focus().toggleCode().run() },
-  { mark: 'highlight', icon: Highlighter, label: `Hervorheben (${formatCombo('Mod+Shift+H')})`, toggle: (e) => e.chain().focus().toggleHighlight().run() },
+  {
+    mark: 'highlight',
+    icon: Highlighter,
+    label: 'Textmarker in der zuletzt gewählten Farbe (Farbe ändern: „A“)',
+    toggle: (e) =>
+      e.isActive('highlight')
+        ? e.chain().focus().unsetHighlight().run()
+        : lastHighlight()
+          ? e.chain().focus().setHighlight({ color: lastHighlight()! }).run()
+          : e.chain().focus().setHighlight().run(),
+  },
   { mark: 'superscript', icon: Superscript, label: 'Hochgestellt', toggle: (e) => e.chain().focus().toggleSuperscript().run() },
   { mark: 'subscript', icon: Subscript, label: 'Tiefgestellt', toggle: (e) => e.chain().focus().toggleSubscript().run() },
 ];
@@ -179,7 +209,17 @@ export function Toolbar({ editor }: { editor: Editor }) {
                   editor.isActive(mark) ? 'text-accent' : 'text-muted',
                 )}
               >
-                <Icon size={15} />
+                {mark === 'highlight' ? (
+                  <span className="flex flex-col items-center">
+                    <Icon size={14} />
+                    <span
+                      className="mt-px h-[3px] w-3.5 rounded-full"
+                      style={{ background: lastHighlight() ? `var(--c-tag-${lastHighlight()}-bg)` : 'var(--c-mark)' }}
+                    />
+                  </span>
+                ) : (
+                  <Icon size={15} />
+                )}
               </button>
             ))}
             <ColorButton editor={editor} onOpen={() => setMode('color')} />
@@ -319,7 +359,11 @@ function ColorMenu({ editor }: { editor: Editor }) {
       <ColorSwatches
         kind="bg"
         value={colorName(editor.getAttributes('highlight').color)}
-        onPick={(color) => (color ? editor.chain().focus().setHighlight({ color }).run() : editor.chain().focus().unsetHighlight().run())}
+        onPick={(color) => {
+          if (!color) return editor.chain().focus().unsetHighlight().run();
+          rememberHighlight(color);
+          return editor.chain().focus().setHighlight({ color }).run();
+        }}
       />
     </div>
   );

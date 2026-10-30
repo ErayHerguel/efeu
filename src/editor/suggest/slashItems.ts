@@ -63,7 +63,16 @@ export interface SlashItem {
   run(editor: Editor, range: Range, ctx: SlashContext): void;
 }
 
-const block = (editor: Editor, range: Range) => editor.chain().focus().deleteRange(range);
+/**
+ * Entfernt „/Suchbegriff“ und gibt die Kette für den Block zurück. Steht davor schon Text („Hallo /h1“),
+ * verschwindet auch das Leerzeichen vor dem Slash: Dann wird die Zeile nachträglich umgewandelt.
+ */
+const block = (editor: Editor, range: Range) => {
+  const $from = editor.state.doc.resolve(range.from);
+  const before = $from.parent.textBetween(0, $from.parentOffset, undefined, ' ');
+  const from = before.endsWith(' ') && before.trim() ? range.from - 1 : range.from;
+  return editor.chain().focus().deleteRange({ from, to: range.to });
+};
 
 export const SLASH_ITEMS: SlashItem[] = [
   {

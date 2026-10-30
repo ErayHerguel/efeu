@@ -242,6 +242,18 @@ describe('Slash-Befehle', () => {
     });
   }
 
+  it('wandelt eine Zeile mit Text nachträglich um (Leerzeichen vor dem Slash verschwindet)', () => {
+    editor = createTestEditor({ type: 'doc', content: [p('Hallo Welt /')] });
+    cursorInBlock(0);
+    run('h1');
+    expect(editor.state.doc.child(0).type.name).toBe('heading');
+    expect(editor.state.doc.child(0).textContent).toBe('Hallo Welt');
+    typeText(editor, ' /');
+    run('paragraph');
+    expect(editor.state.doc.child(0).type.name).toBe('paragraph');
+    expect(editor.state.doc.child(0).textContent).toBe('Hallo Welt');
+  });
+
   it('/divider fügt einen Trenner ein', () => {
     editor = createTestEditor({ type: 'doc', content: [p('/')] });
     cursorInBlock(0);
