@@ -8,7 +8,12 @@ Kein Konto, kein Cloud-Server, keine Telemetrie. Alle Daten liegen auf deinem Co
 ## Funktionen
 
 - **Seiten** in beliebiger Verschachtelung, Drag-and-drop in der Seitenleiste (Seiten lassen sich auch in Datenbanken ziehen), Papierkorb mit Wiederherstellen
-- **Block-Editor**: jeder Block per Greifer verschiebbar (auch in Spalten, Toggles und Callouts); Absatz, Überschriften, Listen, To-dos, Toggle, Zitat, Callout, Code mit Syntax-Highlighting, Trenner, Tabellen, 2/3 Spalten, Bilder mit Unterschrift, Dateianhänge (Audio/Video spielen direkt), Unterseiten, eingebettete Datenbanken
+- **Block-Editor**: jeder Block per Greifer verschiebbar (auch in Spalten, Toggles und Callouts); Absatz, Überschriften, Listen, To-dos, Toggle, Zitat, Callout, Code mit Syntax-Highlighting, Formeln, Trenner, Tabellen, 2/3 Spalten, Bilder mit Unterschrift, Dateianhänge (Audio/Video spielen direkt), Unterseiten, eingebettete Datenbanken
+- **Formatierung**: Text markieren → schwebende Leiste mit „Umwandeln in …“ (Text, Überschriften, Listen, To-do, Toggle, Zitat, Callout, Code), Text- und Hintergrundfarben (9 Farben, hell und dunkel), Ausrichtung, hoch- und tiefgestellt. Klick auf den Greifer `⋮⋮` öffnet das Blockmenü: umwandeln, ganzen Block färben, duplizieren, verschieben, löschen
+- **Tabellen**: Griffe an Zeilen und Spalten mit Menü (einfügen, duplizieren, verschieben, nach Spalte sortieren, Kopfzeile/-spalte, löschen), „+“-Leisten am Rand, Zellen verbinden und teilen, Hintergrundfarbe und Ausrichtung je Zelle
+- **Formeln** mit LaTeX (KaTeX): `$a^2+b^2$` im Text, `$$` + Leertaste oder `/formel` als eigener Block; Klick auf eine Formel öffnet die Eingabe mit Vorschau. Im Markdown als `$…$` und `$$…$$`
+- **Zeichnen in der Seite** (Stift-Knopf oben oder `⌥⌘D`): Stift, Textmarker, Pfeil und Radierer über dem Text, um Dinge einzukreisen, zu verbinden oder zu markieren. Jeder Strich hängt am Block, in dem er beginnt, und wandert mit ihm; gespeichert, abgeglichen und mit `⌘Z` rückgängig. Nicht im Markdown-Export
+- **Karteikarten**: Zeilen `Frage :: Antwort` und Toggles, deren Überschrift mit „?“ endet, werden zu Karten. „Lernen“ in der Seitenleiste (`⌥⌘L`) oder im Seitenmenü für eine Seite samt Unterseiten; Nochmal/Schwer/Gut/Einfach mit wachsenden Abständen. Der Lernstand ist persönlich und gleicht sich nur mit deinen eigenen Geräten ab
 - **Boards** wie in FigJam (`⌥⌘B` oder `/board`): unendliche Fläche mit Sticky Notes, Formen, Pfeilen, Freihand, Bildern; eingebettet in Seiten mit Vorschau; Export als PNG/SVG und `.excalidraw` (basiert auf Excalidraw, MIT)
 - **Zusammenarbeiten** (Seitenleiste „Teilen“): Personen per Link zu einzelnen Seiten, Boards oder Datenbanken einladen, mit Lese- oder Schreibrecht. Gemeinsames Bearbeiten live mit Cursorn, im Browser oder in der eigenen efeu-App. Dein Computer ist der Server (siehe unten)
 - **efeu auf dem iPhone** (Einstellungen → Meine Geräte → „iPhone verbinden“): QR-Code scannen, zum Home-Bildschirm hinzufügen, fertig. Der ganze Workspace live, ohne App Store, solange efeu auf dem Computer läuft
@@ -16,7 +21,7 @@ Kein Konto, kein Cloud-Server, keine Telemetrie. Alle Daten liegen auf deinem Co
 - **KI mit eigenem Schlüssel** (Einstellungen → KI, Claude von Anthropic), alles nur auf Abruf:
   - **KI-Leiste** (`⌘J` oder Knopf „KI“ oben): Anweisung eintippen, optional PDF oder Seite anhängen. Claude bearbeitet die **Seite** Block für Block (Bilder, Datenbanken, Boards und Kommentare bleiben geschützt), das **Board** (Post-its ändern, umfärben, löschen, passend in Gruppen ergänzen, neue Matrix/Cluster/Abläufe) oder die **Datenbank** (Einträge aus PDF oder Text anlegen, Spalten füllen und vereinheitlichen). Vorher eine Vorschau „geändert / neu / gelöscht“ mit Übernehmen, Verwerfen oder Verfeinern; mit `⌘Z` rückgängig. PDF → neue Notiz per Schalter „Neue Seite“
   - **Text markieren → „KI“**: verbessern, kürzen, ausführlicher, einfacher, Ton, übersetzen, erklären oder eigene Anweisung, mit Vorschau
-  - `/zusammenfassen`, `/aufgaben`, `/weiterschreiben`; Board als Seite zusammenfassen; markierte Post-its clustern; Titel und Icon vorschlagen (Seitenmenü)
+  - `/zusammenfassen`, `/aufgaben`, `/weiterschreiben`; Board als Seite zusammenfassen; markierte Post-its clustern; Titel und Icon vorschlagen und **Karteikarten erstellen** (Seitenmenü: Claude liest die Seite und hängt passende „Frage :: Antwort“-Karten an, ohne vorhandene zu doppeln)
   - **Frag efeu** (`⇧⌘J`): Antworten aus deinen Seiten mit Seitenlinks; **Recherche** mit Websuche als Seite mit Quellen
   - **Kosten im Blick**: vor jeder Aktion die Schätzung für Opus, Sonnet und Haiku, danach die echten Kosten; Übersicht heute/Monat nach Funktion und Modell; optionales Monatsbudget. Der Schlüssel liegt im Schlüsselbund, nie in der Datenbank; ohne Schlüssel bleibt efeu offline
 - **Schnellnotiz von überall** (`⌃⌥N`, auch wenn efeu im Hintergrund ist): kleines Fenster, `⌘↩` legt die Notiz in den „Eingang“ (erste Zeile = Titel)
@@ -188,6 +193,8 @@ Zusätzlich bietet der Markdown-Export (`⇧⌘E` für eine Seite, „Workspace 
 | Startseite | `⇧⌘O` |
 | Favorit an/aus | `⌥⌘S` |
 | Kommentar | `⇧⌘M` |
+| Zeichnen | `⌥⌘D` |
+| Karteikarten lernen | `⌥⌘L` |
 | Alle Kürzel | `⌘/` |
 
 ## Umbenennen
@@ -272,7 +279,7 @@ Mit eigener Cloud gliedert sich die Seitenleiste in **Team**, **Privat** und **N
 - **Erwähnungen:** `@` im Editor fügt einen Erwähnungs-Knoten ein (`mention`, Kennung und Name). Der Server merkt sich je Seite, wer schon erwähnt ist (`mention_seen`), und legt für neu Erwähnte eine Mitteilung an (`notifications`), nur wenn die Person die Seite sehen darf. Die App bekommt sie per Server-Sent Event (`notify`) und zeigt eine Systemmitteilung, der Browser über den Hub; beide listen sie unter „Erwähnungen“.
 - Passwort zurücksetzen: Link unter Team (`/reset/<code>`, 24 Stunden). Entfernen beendet Zugang, Geräte und Sitzungen sofort.
 
-## Formeln
+## Formeln in Datenbanken
 
 Formel-Properties rechnen pro Eintrag, z. B. `prop("Preis") * prop("Menge")` oder `if(prop("Status") == "Erledigt", "✓", "")`. Verfügbar: `+ - * / % ^`, Vergleiche, `&& || !`, sowie `if, concat, length, lower, upper, contains, empty, round, floor, ceil, abs, sqrt, min, max, toNumber, format, today, dateAdd, dateBetween`.
 

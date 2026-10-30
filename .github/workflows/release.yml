@@ -105,7 +105,7 @@ jobs:
           sig = lambda name: open(f"out/{name}.sig").read().strip()
           manifest = {
               "version": version,
-              "notes": f"efeu {version}: @-Erwähnungen mit Mitteilung, Boards live in der App.",
+              "notes": f"efeu {version}: Karteikarten, Zeichnen in Seiten, Formeln, Farben und bessere Tabellen.",
               "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
               "platforms": {
                   # Eine Universal-App für beide Mac-Architekturen
@@ -125,7 +125,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           gh release create "$GITHUB_REF_NAME" out/* --repo "$GITHUB_REPOSITORY" \
             --title "efeu $VERSION" \
-            --notes "**Neu: @-Erwähnungen.** Tippe in einer Seite „@“ und wähle jemanden aus dem Team: Die Person bekommt eine Mitteilung und findet die Stelle unter „Erwähnungen“ in der Seitenleiste, in der App und im Browser. **Boards jetzt live auch in der App:** Elemente, Bilder und Mauszeiger der anderen erscheinen sofort. Datenbanken gleichen schneller ab. Deine Cloud aktualisiert sich beim ersten Verbinden selbst.
+            --notes "**Neu: Reinzeichnen.** Mit Stift, Textmarker und Pfeilen direkt über deinen Notizen einkreisen, verbinden und markieren (Stift-Knopf oben oder ⌥⌘D). **Karteikarten:** Zeilen „Frage :: Antwort“ werden zu Karten, „Lernen“ in der Seitenleiste fragt sie mit Wiederholung im richtigen Abstand ab; die KI erstellt auf Wunsch Karten aus einer Seite. **Mehr Formatierung:** Text- und Hintergrundfarben, „Umwandeln in …“, Ausrichtung, hoch- und tiefgestellt, ein Menü an jedem Block und Formeln mit LaTeX (\`\$a^2\$\`, \`/formel\`). **Tabellen** mit Griffen an Zeilen und Spalten: einfügen, verschieben, sortieren, einfärben, Zellen verbinden. Wichtig für Teams und mehrere Geräte: Bitte alle auf 2.4 aktualisieren, ältere Versionen zeigen Farben, Zeichnungen und Formeln nicht an. Deine Cloud aktualisiert sich beim ersten Verbinden selbst.
 
           **Mac** (Apple Silicon und Intel, macOS 13+): efeu.dmg laden oder im Terminal \`curl -fsSL https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/install.sh | bash\`
 
