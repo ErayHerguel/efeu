@@ -13,6 +13,7 @@ import { usePages, type Group } from '../store/pages';
 import { startLearning } from './cards/learn';
 import { generateCards } from './ai/cards';
 import { toggleInk } from '../editor/ink/ink';
+import { toggleDictation } from './dictate/dictate';
 import { useUI, type Theme } from '../store/ui';
 import { quitApp } from './lifecycle';
 import { GUEST } from '../lib/mode';
@@ -235,6 +236,16 @@ export const actions: AppAction[] = [
     menu: 'edit',
     when: () => currentPage()?.type === 'page' && getActiveEditor()?.isEditable === true,
     run: () => toggleInk(),
+  },
+  {
+    id: 'dictate.toggle',
+    label: 'Diktieren (Taste halten oder drücken, sprechen)',
+    group: 'Seite',
+    keys: 'Mod+Alt+V',
+    // Das Kürzel verarbeitet DictateUI selbst (Halten = Push-to-Talk); hier nur für Palette und Übersicht.
+    menuOnly: true,
+    when: () => !GUEST && getActiveEditor()?.isEditable === true,
+    run: () => toggleDictation(),
   },
   {
     id: 'page.trash',

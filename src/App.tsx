@@ -50,6 +50,8 @@ import { UpdateBanner } from './features/update/UpdateBanner';
 import { hydrateUpdates, scheduleStartupCheck } from './features/update/updater';
 import { startCloud } from './features/cloud/cloud';
 import { LearnDialog } from './features/cards/LearnDialog';
+import { DictateUI } from './features/dictate/DictateUI';
+import { GUEST } from './lib/mode';
 import { countDue } from './features/cards/learn';
 import { usePages } from './store/pages';
 import { forgetPages, useUI } from './store/ui';
@@ -189,6 +191,7 @@ export function App() {
       {overlay === 'settings' && <SettingsDialog />}
       {overlay === 'templates' && <TemplatePicker />}
       {overlay === 'learn' && <LearnDialog />}
+      {!GUEST && <DictateUI />}
       <ConfirmDialog />
       <AiConfirm />
       <WritePanel />

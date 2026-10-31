@@ -66,6 +66,10 @@ const HALLUCINATIONS: &[&str] = &[
 #[derive(Default)]
 pub struct Lecture {
     session: Mutex<Option<Session>>,
+    /// Laufendes Diktat (kurze Aufnahme, wird am Ende am Stück erkannt)
+    dictation: Mutex<Option<Dictation>>,
+    /// Geladenes Sprachmodell fürs Diktat und wann es zuletzt gebraucht wurde
+    model: Mutex<Option<(Arc<WhisperContext>, Instant)>>,
     /// Pegel-Test im Startfenster (nur Mikrofon, keine Erkennung)
     monitor: Mutex<Option<(Arc<AtomicBool>, JoinHandle<()>)>>,
     downloading: AtomicBool,
@@ -75,6 +79,12 @@ impl Lecture {
     pub fn new() -> Self {
         Self::default()
     }
+}
+
+struct Dictation {
+    stop: Arc<AtomicBool>,
+    capture: Option<JoinHandle<()>>,
+    buffer: Arc<Mutex<Buffer>>,
 }
 
 struct Session {
@@ -350,6 +360,162 @@ pub async fn lecture_stop(app: AppHandle) -> Result<(), String> {
 }
 
 /// Öffnet das gewählte Mikrofon (oder das Systemmikrofon); ohne `buffer` wird nur der Pegel gemeldet.
+/// Wie lange das Modell nach einem Diktat im Speicher bleibt (das nächste Diktat startet dann sofort).
+const MODEL_IDLE: Duration = Duration::from_secs(10 * 60);
+
+/// Sprachmodell fürs Diktat: einmal laden, eine Weile behalten.
+fn cached_context(app: &AppHandle) -> Result<Arc<WhisperContext>, String> {
+    let state = app.state::<Lecture>();
+    let mut slot = state.model.lock().unwrap();
+    if let Some((context, used)) = slot.as_mut() {
+        *used = Instant::now();
+        return Ok(context.clone());
+    }
+    let path = model_path(app)?;
+    whisper_rs::install_logging_hooks();
+    let context = Arc::new(
+        WhisperContext::new_with_params(&path, WhisperContextParameters::default()).map_err(|e| format!("Sprachmodell konnte nicht geladen werden: {e}"))?,
+    );
+    *slot = Some((context.clone(), Instant::now()));
+    Ok(context)
+}
+
+/// Gibt das Modell frei, wenn es eine Weile nicht gebraucht wurde.
+fn release_model_later(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(MODEL_IDLE + Duration::from_secs(1));
+        let state = app.state::<Lecture>();
+        let mut slot = state.model.lock().unwrap();
+        if slot.as_ref().is_some_and(|(_, used)| used.elapsed() >= MODEL_IDLE) {
+            *slot = None;
+        }
+    });
+}
+
+/// Diktat starten: Mikrofon an, Ton sammeln; das Modell lädt schon im Hintergrund.
+#[tauri::command]
+pub fn dictate_start(app: AppHandle, state: State<'_, Lecture>, device: Option<String>) -> Result<(), String> {
+    if state.session.lock().unwrap().is_some() {
+        return Err("Während einer Mitschrift geht kein Diktat.".into());
+    }
+    if !valid_model(&model_path(&app)?) {
+        return Err("Das Sprachmodell fehlt noch.".into());
+    }
+    stop_monitor(&state);
+    let mut slot = state.dictation.lock().unwrap();
+    if slot.is_some() {
+        return Ok(());
+    }
+    let stop = Arc::new(AtomicBool::new(false));
+    let paused = Arc::new(AtomicBool::new(false));
+    let buffer = Arc::new(Mutex::new(Buffer { samples: Vec::with_capacity(RATE * 30) }));
+    let capture = {
+        let (app, stop, buffer) = (app.clone(), stop.clone(), buffer.clone());
+        std::thread::Builder::new()
+            .name("efeu-diktat".into())
+            .spawn(move || {
+                if let Err(message) = capture_loop(&app, device.as_deref(), &stop, &paused, Some(&buffer)) {
+                    stop.store(true, Ordering::SeqCst);
+                    emit(&app, LectureEvent::Error { message });
+                }
+            })
+            .map_err(|e| e.to_string())?
+    };
+    {
+        let app = app.clone();
+        std::thread::spawn(move || {
+            let _ = cached_context(&app);
+        });
+    }
+    *slot = Some(Dictation { stop, capture: Some(capture), buffer });
+    Ok(())
+}
+
+/// Diktat beenden und den gesprochenen Text liefern (leer bei Stille).
+#[tauri::command]
+pub async fn dictate_stop(app: AppHandle, language: String) -> Result<String, String> {
+    let dictation = app.state::<Lecture>().dictation.lock().unwrap().take();
+    let Some(mut dictation) = dictation else { return Ok(String::new()) };
+    dictation.stop.store(true, Ordering::SeqCst);
+    let capture = dictation.capture.take();
+    let buffer = dictation.buffer.clone();
+    let app_worker = app.clone();
+    let text = tauri::async_runtime::spawn_blocking(move || {
+        if let Some(handle) = capture {
+            let _ = handle.join();
+        }
+        let mut samples = std::mem::take(&mut buffer.lock().unwrap().samples);
+        transcribe_dictation(&app_worker, &mut samples, &language)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    release_model_later(&app);
+    Ok(text)
+}
+
+/// Diktat abbrechen, ohne zu erkennen.
+#[tauri::command]
+pub fn dictate_cancel(state: State<'_, Lecture>) {
+    if let Some(mut dictation) = state.dictation.lock().unwrap().take() {
+        dictation.stop.store(true, Ordering::SeqCst);
+        if let Some(handle) = dictation.capture.take() {
+            let _ = handle.join();
+        }
+    }
+}
+
+fn transcribe_dictation(app: &AppHandle, samples: &mut Vec<f32>, language: &str) -> Result<String, String> {
+    let sens = sensitivity("normal");
+    if samples.len() < RATE / 3 || rms(samples) < sens.silence_rms {
+        return Ok(String::new());
+    }
+    let context = cached_context(app)?;
+    recognize(&context, samples, language)
+}
+
+/// Erkennt eine kurze Aufnahme am Stück (Diktat).
+fn recognize(context: &WhisperContext, samples: &mut Vec<f32>, language: &str) -> Result<String, String> {
+    let sens = sensitivity("normal");
+    // Whisper braucht gut eine Sekunde Ton: kurze Aufnahmen mit Stille auffüllen.
+    if samples.len() < RATE + RATE / 5 {
+        samples.resize(RATE + RATE / 5, 0.0);
+    }
+    enhance(samples, sens.max_gain);
+    let mut state = context.create_state().map_err(|e| e.to_string())?;
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    let strategy = SamplingStrategy::BeamSearch { beam_size: 5, patience: -1.0 };
+    #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+    let strategy = SamplingStrategy::Greedy { best_of: 1 };
+    let mut params = FullParams::new(strategy);
+    let language = match language {
+        "de" | "en" | "fr" | "es" | "it" | "tr" => Some(language),
+        _ => None,
+    };
+    params.set_language(language);
+    // Diktat ist kurz und man wartet darauf: alle Kerne nutzen.
+    params.set_n_threads(std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4).clamp(1, 8) as i32);
+    params.set_print_progress(false);
+    params.set_print_realtime(false);
+    params.set_print_special(false);
+    params.set_print_timestamps(false);
+    params.set_suppress_blank(true);
+    params.set_no_speech_thold(sens.no_speech);
+    state.full(params, samples).map_err(|e| format!("Spracherkennung: {e}"))?;
+    let mut text = String::new();
+    for segment in state.as_iter() {
+        let part = segment.to_str_lossy().map(|t| t.trim().to_string()).unwrap_or_default();
+        if part.is_empty() || is_hallucination(&part) {
+            continue;
+        }
+        if !text.is_empty() {
+            text.push(' ');
+        }
+        text.push_str(&part);
+    }
+    Ok(text)
+}
+
 fn capture_loop(app: &AppHandle, device_name: Option<&str>, stop: &AtomicBool, paused: &Arc<AtomicBool>, buffer: Option<&Arc<Mutex<Buffer>>>) -> Result<(), String> {
     let host = cpal::default_host();
     let chosen = device_name.and_then(|wanted| {
@@ -684,6 +850,22 @@ mod tests {
         let mut loud: Vec<f32> = (0..RATE).map(|i| (i as f32 / 20.0).sin() * 1.5).collect();
         enhance(&mut loud, 40.0);
         assert!(loud.iter().all(|s| s.abs() <= 1.0));
+    }
+
+    /// Echte Erkennung mit Modell: EFEU_WHISPER_MODEL=<ggml-Datei> EFEU_TEST_WAV=<16 kHz Mono, 16 Bit> cargo test -- --ignored
+    #[test]
+    #[ignore]
+    fn dictation_recognizes_speech() {
+        let model = std::env::var("EFEU_WHISPER_MODEL").expect("EFEU_WHISPER_MODEL");
+        let wav = std::fs::read(std::env::var("EFEU_TEST_WAV").expect("EFEU_TEST_WAV")).unwrap();
+        // Daten-Chunk suchen und 16-Bit-Samples lesen
+        let data = wav.windows(4).position(|w| w == b"data").expect("data-Chunk") + 8;
+        let mut samples: Vec<f32> = wav[data..].chunks_exact(2).map(|b| i16::from_le_bytes([b[0], b[1]]) as f32 / 32768.0).collect();
+        let context = WhisperContext::new_with_params(&model, WhisperContextParameters::default()).unwrap();
+        let text = recognize(&context, &mut samples, "de").unwrap();
+        println!("Erkannt: {text}");
+        let lower = text.to_lowercase();
+        assert!(lower.contains("mitochondrien") && lower.contains("kraftwerk"), "{text}");
     }
 
     #[test]

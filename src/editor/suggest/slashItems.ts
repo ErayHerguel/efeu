@@ -9,6 +9,7 @@ import {
   Paperclip,
   Shapes,
   Sheet,
+  AudioLines,
   Radical,
   Sigma,
   Table as TableIcon,
@@ -34,6 +35,7 @@ import {
 import { startWrite } from '../../features/ai/writeSession';
 import { openAiBar } from '../../features/ai/edit/session';
 import { convertToBoard } from '../../features/ai/edit/toBoard';
+import { startDictation } from '../../features/dictate/dictate';
 import { openLectureStart } from '../../features/lecture/LectureUI';
 import { pickAndStoreFile, pickImage } from '../../lib/assets';
 import { columnsContent } from '../nodes/columns';
@@ -324,6 +326,19 @@ export const SLASH_ITEMS: SlashItem[] = [
     keywords: ['link', 'verweis', 'mention', '[['],
     icon: Link2,
     run: (editor, range) => block(editor, range).insertContent('[[').run(),
+  },
+  {
+    id: 'dictate',
+    title: 'Diktieren',
+    description: 'Sprechen statt tippen, lokal erkannt (⌥⌘V)',
+    group: 'Seiten',
+    keywords: ['diktat', 'diktieren', 'sprechen', 'sprache', 'mikrofon', 'voice', 'dictate'],
+    icon: AudioLines,
+    hostOnly: true,
+    run: (editor, range) => {
+      editor.chain().focus().deleteRange(range).run();
+      void startDictation();
+    },
   },
   {
     id: 'lecture',
