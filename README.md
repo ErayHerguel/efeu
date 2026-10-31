@@ -13,6 +13,9 @@ Kein Konto, kein Cloud-Server, keine Telemetrie. Alle Daten liegen auf deinem Co
 - **Tabellen**: Griffe an Zeilen und Spalten mit Menü (einfügen, duplizieren, verschieben, nach Spalte sortieren, Kopfzeile/-spalte, löschen), „+“-Leisten am Rand, Zellen verbinden und teilen, Hintergrundfarbe und Ausrichtung je Zelle
 - **Formeln** mit LaTeX (KaTeX): `$a^2+b^2$` im Text, `$$` + Leertaste oder `/formel` als eigener Block; Klick auf eine Formel öffnet die Eingabe mit Vorschau. Im Markdown als `$…$` und `$$…$$`
 - **Zeichnen in der Seite** (Stift-Knopf oben oder `⌥⌘D`): Stift, Textmarker, Pfeil, Textfeld und Radierer über dem Text, um Dinge einzukreisen, zu verbinden oder zu markieren. **Auswählen** (Pfeil-Werkzeug ganz links): Elemente anklicken oder mit Rahmen aufziehen, verschieben, umfärben, mit `⌫` löschen, mit `⌘D` duplizieren. **Pfeile biegen** am mittleren Anfasser, Spitzen an einem, beiden oder keinem Ende, gestrichelt. **Schwebende Textfelder** irgendwo auf der Seite, auch am Rand, in drei Größen und optional in Handschrift; durchsuchbar. Alles hängt am Block, in dem es beginnt, und wandert mit ihm; gespeichert, abgeglichen und mit `⌘Z` rückgängig. Nicht im Markdown-Export
+- **Diktieren** (`⌥⌘V` drücken oder halten, `/diktieren` oder Befehlspalette): sprechen statt tippen, der Text landet am Cursor. Lokal mit Whisper (dasselbe Modell wie bei der Vorlesung), ohne Internet; der Ton wird nie gespeichert. Gehalten = beim Loslassen einfügen, kurz gedrückt = nochmal drücken zum Einfügen, `Esc` bricht ab
+- **PDFs in der Seite** (`/pdf` oder PDF in die Seite ziehen): Folien und Skripte erscheinen als Seiten, gerendert mit pdf.js (nur sichtbare Seiten). Mit dem Zeichenmodus direkt darauf markieren, Pfeile ziehen und Randnotizen schreiben; „Seiten ausblenden“ macht wieder einen Anhang daraus
+- **Probeklausur** (Seitenmenü „KI: Probeklausur üben“): Claude stellt aus der Seite samt Unterseiten 5–20 Fragen (Auswahl, Freitext oder gemischt, normal oder schwer), bewertet die Antworten mit Erklärung, Punkten und Note und legt Fehler auf Wunsch als Karteikarten an
 - **Karteikarten**: Zeilen `Frage :: Antwort` und Toggles, deren Überschrift mit „?“ endet, werden zu Karten. „Lernen“ in der Seitenleiste (`⌥⌘L`) oder im Seitenmenü für eine Seite samt Unterseiten; Nochmal/Schwer/Gut/Einfach mit wachsenden Abständen. Der Lernstand ist persönlich und gleicht sich nur mit deinen eigenen Geräten ab
 - **Boards** wie in FigJam (`⌥⌘B` oder `/board`): unendliche Fläche mit Sticky Notes, Formen, Pfeilen, Freihand, Bildern; eingebettet in Seiten mit Vorschau; Export als PNG/SVG und `.excalidraw` (basiert auf Excalidraw, MIT)
 - **Zusammenarbeiten** (Seitenleiste „Teilen“): Personen per Link zu einzelnen Seiten, Boards oder Datenbanken einladen, mit Lese- oder Schreibrecht. Gemeinsames Bearbeiten live mit Cursorn, im Browser oder in der eigenen efeu-App. Dein Computer ist der Server (siehe unten)
@@ -195,6 +198,7 @@ Zusätzlich bietet der Markdown-Export (`⇧⌘E` für eine Seite, „Workspace 
 | Kommentar | `⇧⌘M` |
 | Zeichnen | `⌥⌘D` |
 | Karteikarten lernen | `⌥⌘L` |
+| Diktieren | `⌥⌘V` |
 | Alle Kürzel | `⌘/` |
 
 ## Umbenennen
