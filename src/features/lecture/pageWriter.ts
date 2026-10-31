@@ -10,12 +10,12 @@ import { useUI } from '../../store/ui';
  * Fokus oder Scrollposition zu verändern, nicht im Rückgängig-Verlauf), sonst direkt in die Datenbank.
  */
 
-function openEditor(pageId: string) {
+export function openEditor(pageId: string) {
   const editor = getActiveEditor();
   return editor && useUI.getState().currentId === pageId && editor.isEditable ? editor : null;
 }
 
-async function writeDoc(pageId: string, change: (content: JSONContent[]) => JSONContent[]): Promise<void> {
+export async function writeDoc(pageId: string, change: (content: JSONContent[]) => JSONContent[]): Promise<void> {
   const doc = (await loadDoc(pageId)) ?? { type: 'doc', content: [] };
   const content = change([...(doc.content ?? [])]);
   const next: JSONContent = { type: 'doc', content: content.length ? content : [{ type: 'paragraph' }] };

@@ -93,6 +93,8 @@ export interface ViewConfig {
   widths: Record<string, number>;
   hidden: string[];
   groupBy: string | null;
+  /** Board: ausgeblendete Spalten (Options-IDs, „__none__“ für „Ohne …“) */
+  hiddenGroups?: string[];
 }
 
 export type ViewType = 'table' | 'board' | 'calendar' | 'gallery' | 'list';
