@@ -2,6 +2,7 @@ import { Node } from '@tiptap/core';
 import { assetUrl, openAsset } from '../../lib/assets';
 import { reportError } from '../../store/toast';
 import { el } from '../dom';
+import { isPdf, mountPdf, PDF_WIDTH } from './pdf';
 
 const VIDEO = /\.(mp4|mov|m4v|webm)$/i;
 const AUDIO = /\.(mp3|m4a|wav|aac|ogg|flac)$/i;
@@ -12,7 +13,7 @@ export function formatSize(bytes: number): string {
   return `${(bytes / 1024 ** 2).toFixed(1).replace('.', ',')} MB`;
 }
 
-/** Dateianhang im App-Ordner; Audio und Video werden direkt abgespielt, alles andere öffnet macOS. */
+/** Dateianhang im App-Ordner; Audio und Video werden direkt abgespielt, PDFs auf Wunsch als Seiten gezeigt, alles andere öffnet macOS. */
 export const FileBlock = Node.create({
   name: 'file',
   group: 'block',
@@ -21,7 +22,13 @@ export const FileBlock = Node.create({
   selectable: true,
 
   addAttributes() {
-    return { src: { default: null }, name: { default: 'Datei' }, size: { default: 0 } };
+    return {
+      src: { default: null },
+      name: { default: 'Datei' },
+      size: { default: 0 },
+      /** PDF: Seiten direkt in der Seite zeigen (zum Lesen und Reinzeichnen) statt nur als Anhang */
+      preview: { default: false },
+    };
   },
 
   parseHTML() {
@@ -42,8 +49,8 @@ export const FileBlock = Node.create({
   },
 
   addNodeView() {
-    return ({ node }) => {
-      const { src, name, size } = node.attrs as { src: string; name: string; size: number };
+    return ({ node, getPos, editor }) => {
+      const { src, name, size, preview } = node.attrs as { src: string; name: string; size: number; preview: boolean };
       const dom = el('div', 'file-block');
       dom.contentEditable = 'false';
       if (VIDEO.test(src) || AUDIO.test(src)) {
@@ -65,8 +72,37 @@ export const FileBlock = Node.create({
       chip.append(label, meta);
       chip.addEventListener('click', () => openAsset(src, name).catch((err) => reportError('Datei konnte nicht geöffnet werden', err)));
       dom.append(chip);
+      let unmount: (() => void) | null = null;
+      if (isPdf(name) || isPdf(src)) {
+        const toggle = el('button', 'file-toggle');
+        toggle.type = 'button';
+        toggle.textContent = preview ? 'Seiten ausblenden' : 'Seiten zeigen';
+        toggle.title = preview ? 'Nur als Anhang zeigen' : 'PDF-Seiten hier anzeigen, zum Lesen und Reinzeichnen';
+        toggle.addEventListener('mousedown', (e) => e.preventDefault());
+        toggle.addEventListener('click', () => {
+          const pos = getPos();
+          if (typeof pos !== 'number' || !editor.isEditable) return;
+          editor.view.dispatch(editor.state.tr.setNodeAttribute(pos, 'preview', !preview));
+        });
+        const head = el('div', 'file-head');
+        head.append(chip, toggle);
+        dom.append(head);
+        if (preview) {
+          dom.classList.add('is-pdf');
+          const pages = el('div', 'pdf-pages');
+          pages.style.width = `${PDF_WIDTH}px`;
+          dom.append(pages);
+          unmount = mountPdf(pages, assetUrl(src));
+        }
+      }
       return {
         dom,
+        update: (updated) =>
+          updated.type.name === 'file' &&
+          updated.attrs.src === src &&
+          updated.attrs.preview === preview &&
+          updated.attrs.name === name,
+        destroy: () => unmount?.(),
         selectNode: () => dom.classList.add('is-selected'),
         deselectNode: () => dom.classList.remove('is-selected'),
         stopEvent: (event) => dom.querySelector('video, audio')?.contains(event.target as globalThis.Node) ?? false,

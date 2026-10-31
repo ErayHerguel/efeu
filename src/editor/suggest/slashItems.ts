@@ -229,6 +229,23 @@ export const SLASH_ITEMS: SlashItem[] = [
     },
   },
   {
+    id: 'pdf',
+    title: 'PDF',
+    description: 'Folien oder Skript als Seiten zum Lesen und Reinzeichnen',
+    group: 'Medien',
+    keywords: ['pdf', 'folien', 'skript', 'slides', 'dokument', 'annotieren'],
+    icon: FileText,
+    run: (editor, range) => {
+      block(editor, range).run();
+      pickAndStoreFile(['pdf'])
+        .then((stored) => {
+          if (!stored) return;
+          editor.chain().focus().insertContent({ type: 'file', attrs: { src: stored.src, name: stored.name, size: stored.size, preview: true } }).run();
+        })
+        .catch((err) => reportError('PDF konnte nicht eingefügt werden', err));
+    },
+  },
+  {
     id: 'file',
     title: 'Datei',
     description: 'Anhang; Audio und Video spielen direkt',

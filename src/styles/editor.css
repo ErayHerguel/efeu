@@ -651,6 +651,69 @@ div.block-handle-button {
   stroke-width: 1;
 }
 
+/* ---------- PDFs als Seiten ---------- */
+.efeu-editor .file-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.efeu-editor .file-head .file-chip {
+  flex: 1;
+  width: auto;
+}
+.efeu-editor .file-toggle {
+  flex-shrink: 0;
+  white-space: nowrap;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--c-muted);
+}
+.efeu-editor .file-toggle:hover {
+  background: var(--c-hover);
+  color: var(--c-text);
+}
+.efeu-editor .pdf-pages {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 100%;
+  margin-top: 8px;
+}
+.efeu-editor .pdf-page {
+  position: relative;
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+  overflow: hidden;
+}
+.efeu-editor .pdf-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.efeu-editor .pdf-page-number {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #6c6c66;
+  background: rgb(255 255 255 / 0.85);
+}
+.efeu-editor .pdf-status {
+  padding: 16px;
+  font-size: 13px;
+  color: var(--c-muted);
+}
+.efeu-editor .pdf-status.is-error {
+  color: var(--c-danger);
+}
+
 /* ---------- Formeln ---------- */
 .efeu-editor .math-inline {
   padding: 0 2px;

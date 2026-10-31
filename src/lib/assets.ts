@@ -84,12 +84,12 @@ export async function importFileBlob(file: Blob, name: string): Promise<StoredFi
 }
 
 /** Dateidialog für Anhänge; die gewählte Datei wird gespeichert. Liefert null bei Abbruch. */
-export async function pickAndStoreFile(): Promise<(StoredFile & { name: string }) | null> {
+export async function pickAndStoreFile(extensions?: string[]): Promise<(StoredFile & { name: string }) | null> {
   if (GUEST) {
-    const file = await chooseFile();
+    const file = await chooseFile(extensions?.map((e) => `.${e}`).join(','));
     return file ? { ...(await uploadFile(file, file.name)), name: file.name } : null;
   }
-  const selected = await open({ multiple: false, directory: false });
+  const selected = await open({ multiple: false, directory: false, ...(extensions ? { filters: [{ name: extensions.join(', ').toUpperCase(), extensions }] } : {}) });
   if (typeof selected !== 'string') return null;
   return { ...(await importFile(selected)), name: selected.split(/[\\/]/).pop() ?? selected };
 }

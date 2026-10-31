@@ -13,7 +13,7 @@ async function insertImages(editor: Editor, files: File[], pos: number) {
       files.map(async (file) => {
         if (isImage(file)) return { type: 'image', attrs: { src: await importImageBlob(file, file.name) } };
         const stored = await importFileBlob(file, file.name);
-        return { type: 'file', attrs: { src: stored.src, name: file.name, size: stored.size } };
+        return { type: 'file', attrs: { src: stored.src, name: file.name, size: stored.size, preview: /\.pdf$/i.test(file.name) } };
       }),
     );
     if (editor.isDestroyed) return;
