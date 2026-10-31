@@ -105,7 +105,7 @@ jobs:
           sig = lambda name: open(f"out/{name}.sig").read().strip()
           manifest = {
               "version": version,
-              "notes": f"efeu {version}: Diktieren, PDFs zum Reinzeichnen, Probeklausuren, konfigurierbare Kanban-Boards mit Unteraufgaben.",
+              "notes": f"efeu {version}: Kanban-Spalten konfigurieren und Unteraufgaben auf Karten.",
               "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
               "platforms": {
                   # Eine Universal-App für beide Mac-Architekturen
@@ -125,7 +125,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           gh release create "$GITHUB_REF_NAME" out/* --repo "$GITHUB_REPOSITORY" \
             --title "efeu $VERSION" \
-            --notes "**Neu für dein Studium.** **Diktieren:** ⌥⌘V halten, sprechen, loslassen, und der Text steht am Cursor; erkannt wird lokal auf deinem Computer, ohne Internet. **PDFs zum Reinzeichnen:** Folien in die Seite ziehen oder /pdf, dann direkt darauf markieren, Pfeile ziehen und Randnotizen schreiben. **Probeklausur:** Im Seitenmenü „KI: Probeklausur üben“ stellt Claude aus deinen Notizen eine Klausur, korrigiert, erklärt Fehler, gibt eine Note und macht falsche Antworten auf Wunsch zu Karteikarten. **Kanban-Boards konfigurieren:** Spalten hinzufügen, umbenennen, einfärben, verschieben, ausblenden und löschen. **Unteraufgaben:** To-dos in einem Eintrag zeigen ihren Fortschritt direkt auf der Karte und lassen sich dort abhaken und ergänzen. Deine Cloud aktualisiert sich beim ersten Verbinden selbst.
+            --notes "**Kanban-Boards konfigurieren:** Spalten hinzufügen, umbenennen (Doppelklick), einfärben, verschieben, ausblenden und löschen. **Unteraufgaben:** To-dos in einem Eintrag zeigen ihren Fortschritt direkt auf der Karte und lassen sich dort abhaken und ergänzen, ohne den Eintrag zu öffnen. Deine Cloud aktualisiert sich beim ersten Verbinden selbst.
 
           **Mac** (Apple Silicon und Intel, macOS 13+): efeu.dmg laden oder im Terminal \`curl -fsSL https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/install.sh | bash\`
 

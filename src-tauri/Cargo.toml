@@ -1,6 +1,6 @@
 [package]
 name = "efeu"
-version = "2.6.0"
+version = "2.6.1"
 description = "efeu – lokale Notizen und Datenbanken"
 edition = "2021"
 publish = false
