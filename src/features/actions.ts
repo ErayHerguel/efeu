@@ -14,6 +14,7 @@ import { startLearning } from './cards/learn';
 import { generateCards } from './ai/cards';
 import { toggleInk } from '../editor/ink/ink';
 import { toggleDictation } from './dictate/dictate';
+import { startExam } from './exam/ExamDialog';
 import { useUI, type Theme } from '../store/ui';
 import { quitApp } from './lifecycle';
 import { GUEST } from '../lib/mode';
@@ -534,6 +535,16 @@ export const actions: AppAction[] = [
     run: () => {
       const page = currentPage();
       if (page) void generateCards(page.id);
+    },
+  },
+  {
+    id: 'ai.exam',
+    label: 'KI: Probeklausur zu dieser Seite üben',
+    group: 'KI',
+    when: () => aiUsable() && currentPage()?.type === 'page',
+    run: () => {
+      const page = currentPage();
+      if (page) startExam(page.id);
     },
   },
   {

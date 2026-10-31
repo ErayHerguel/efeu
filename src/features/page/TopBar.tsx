@@ -1,8 +1,9 @@
-import { ChevronLeft, ChevronRight, Copy, CopyPlus, History, Layers, LayoutTemplate, House, MessageSquare, MoreHorizontal, MoveHorizontal, Mic, PanelLeft, PenTool, Printer, Sparkles, Star, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, CopyPlus, GraduationCap, History, Layers, LayoutTemplate, House, MessageSquare, MoreHorizontal, MoveHorizontal, Mic, PanelLeft, PenTool, Printer, Sparkles, Star, Trash2 } from 'lucide-react';
 import { cx } from '../../lib/cx';
 import { useAiReady } from '../ai/store';
 import { openAiBar } from '../ai/edit/session';
 import { generateCards } from '../ai/cards';
+import { startExam } from '../exam/ExamDialog';
 import { toggleInk, useInk } from '../../editor/ink/ink';
 import { suggestTitle } from '../ai/title';
 import { openLectureStart } from '../lecture/LectureUI';
@@ -177,7 +178,10 @@ export function TopBar({ pageId }: { pageId: string | null }) {
                 ? [
                     { label: 'KI: Titel und Icon vorschlagen', icon: Sparkles, onSelect: () => void suggestTitle(page.id) },
                     ...(page.type === 'page'
-                      ? [{ label: 'KI: Karteikarten erstellen', icon: Sparkles, onSelect: () => void generateCards(page.id) }]
+                      ? [
+                          { label: 'KI: Karteikarten erstellen', icon: Sparkles, onSelect: () => void generateCards(page.id) },
+                          { label: 'KI: Probeklausur üben', icon: GraduationCap, onSelect: () => startExam(page.id) },
+                        ]
                       : []),
                   ]
                 : []),

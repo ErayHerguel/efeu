@@ -9,7 +9,7 @@ export interface FocusRequest {
   pageId: string;
   target: FocusTarget;
 }
-export type Overlay = 'palette' | 'search' | 'shortcuts' | 'trash' | 'versions' | 'comments' | 'share' | 'join' | 'settings' | 'templates' | 'learn' | null;
+export type Overlay = 'palette' | 'search' | 'shortcuts' | 'trash' | 'versions' | 'comments' | 'share' | 'join' | 'settings' | 'templates' | 'learn' | 'exam' | null;
 
 const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 480;

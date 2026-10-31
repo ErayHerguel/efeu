@@ -51,6 +51,7 @@ import { hydrateUpdates, scheduleStartupCheck } from './features/update/updater'
 import { startCloud } from './features/cloud/cloud';
 import { LearnDialog } from './features/cards/LearnDialog';
 import { DictateUI } from './features/dictate/DictateUI';
+import { ExamDialog } from './features/exam/ExamDialog';
 import { GUEST } from './lib/mode';
 import { countDue } from './features/cards/learn';
 import { usePages } from './store/pages';
@@ -191,6 +192,7 @@ export function App() {
       {overlay === 'settings' && <SettingsDialog />}
       {overlay === 'templates' && <TemplatePicker />}
       {overlay === 'learn' && <LearnDialog />}
+      {overlay === 'exam' && <ExamDialog />}
       {!GUEST && <DictateUI />}
       <ConfirmDialog />
       <AiConfirm />

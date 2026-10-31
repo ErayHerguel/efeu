@@ -3,7 +3,7 @@ import { db } from '../../db/driver';
 import { commit } from '../../db/saveQueue';
 import { costOf, type Usage } from './cost';
 
-export type Feature = 'lecture' | 'explain' | 'page' | 'database' | 'rewrite' | 'summarize' | 'tasks' | 'continue' | 'board' | 'cluster' | 'ask' | 'research' | 'cards';
+export type Feature = 'lecture' | 'explain' | 'page' | 'database' | 'rewrite' | 'summarize' | 'tasks' | 'continue' | 'board' | 'cluster' | 'ask' | 'research' | 'cards' | 'exam';
 
 export const FEATURE_LABELS: Record<Feature, string> = {
   lecture: 'Vorlesung',
@@ -19,6 +19,7 @@ export const FEATURE_LABELS: Record<Feature, string> = {
   ask: 'Frag efeu',
   research: 'Recherche',
   cards: 'Karteikarten erstellen',
+  exam: 'Probeklausur',
 };
 
 export type UsageStatus = 'ok' | 'cancelled' | 'error';
